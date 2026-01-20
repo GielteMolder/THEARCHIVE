@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from "firebase/app";
+import { useState, useEffect } from 'react'
+import { app, db } from './firebase'; 
 import { 
   getFirestore, collection, getDocs, addDoc, serverTimestamp, query, orderBy 
 } from "firebase/firestore";
@@ -7,18 +7,6 @@ import {
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
 } from "firebase/auth";
 
-// Firebase Configuratie
-const firebaseConfig = {
-  apiKey: "AIzaSyCQyGS486-RohBd3FHBQENIhH0PSkInwBs",
-  authDomain: "expothearchive.firebaseapp.com",
-  projectId: "expothearchive",
-  storageBucket: "expothearchive.firebasestorage.app",
-  messagingSenderId: "18895439101",
-  appId: "1:18895439101:web:c17f8c3e565147f7396a94"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
