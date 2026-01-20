@@ -6,9 +6,8 @@ export default function App() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [view, setView] = useState('grid'); // 'grid' of 'admin'
+  const [view, setView] = useState('grid'); 
 
-  // State voor het invoerformulier
   const [formData, setFormData] = useState({
     type: 'blog',
     content: '',
@@ -16,294 +15,207 @@ export default function App() {
     src: '',
     isTitle: false,
     date: new Date().toLocaleDateString('nl-NL'),
-    tags: ''
   });
 
-  // Haal data op uit Firestore
   const haalPostsOp = async () => {
     setLoading(true);
     try {
       const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
       const querySnapshot = await getDocs(q);
-      
-      let opgehaaldeData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      // Fallback als er geen timestamps zijn
+      let opgehaaldeData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (opgehaaldeData.length === 0) {
         const simpleSnapshot = await getDocs(collection(db, "posts"));
-        opgehaaldeData = simpleSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        opgehaaldeData = simpleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
-
       setPosts(opgehaaldeData);
     } catch (err) {
-      console.error("Fout bij ophalen:", err);
-      const fallbackSnapshot = await getDocs(collection(db, "posts"));
-      const fallbackData = fallbackSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setPosts(fallbackData);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    haalPostsOp();
-  }, [view]);
+  useEffect(() => { haalPostsOp(); }, [view]);
 
-  // Opslaan van een nieuwe post
   const handleSavePost = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, "posts"), {
-        ...formData,
-        timestamp: serverTimestamp()
-      });
-      
-      setFormData({ type: 'blog', content: '', title: '', src: '', isTitle: false, date: new Date().toLocaleDateString('nl-NL'), tags: '' });
+      await addDoc(collection(db, "posts"), { ...formData, timestamp: serverTimestamp() });
+      setFormData({ type: 'blog', content: '', title: '', src: '', isTitle: false, date: new Date().toLocaleDateString('nl-NL') });
       setView('grid');
     } catch (err) {
-      alert("Opslaan mislukt: " + err.message);
+      alert(err.message);
     }
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6 font-mono bg-[#f0f0f0] text-black selection:bg-yellow-300">
+    <div className="min-h-screen bg-[#f8f8f8] text-[#1a1a1a] font-mono selection:bg-black selection:text-white">
       
-      {/* --- HEADER (VERKLEIND) --- */}
-      <header className="max-w-7xl mx-auto mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end border-b-4 border-black pb-4 gap-4">
-        <div>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic leading-none hover:tracking-normal transition-all cursor-default">
-              The Archive
-            </h1>
-            <p className="text-[10px] font-bold bg-black text-white px-2 py-0.5 mt-2 inline-block uppercase tracking-tighter">
-              Exposure Therapy // v2.1 // Connected
-            </p>
-        </div>
-        
-        <button 
-          onClick={() => setView(view === 'grid' ? 'admin' : 'grid')}
-          className="bg-white border-2 border-black px-4 py-2 text-xs font-black uppercase tracking-tighter shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all active:bg-yellow-200"
-        >
-          {view === 'grid' ? '+ New Entry' : 'Back to Grid'}
-        </button>
-      </header>
+      {/* HEADER: Alleen tonen in Grid view */}
+      {view === 'grid' && (
+        <header className="p-6 md:p-10 border-b border-black flex justify-between items-center bg-white sticky top-0 z-30">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-tighter italic">The Archive</h1>
+            <p className="text-[10px] uppercase font-bold opacity-50">Giel te Molder // Exposure Therapy</p>
+          </div>
+          <button 
+            onClick={() => setView('admin')}
+            className="group flex items-center gap-2 border border-black px-4 py-2 hover:bg-black hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest"
+          >
+            <span className="text-lg">+</span> Add Entry
+          </button>
+        </header>
+      )}
 
-      {/* --- ADMIN DASHBOARD (COMPACTER) --- */}
+      {/* ADMIN VIEW: Geen main header, focus op de taak */}
       {view === 'admin' && (
-        <div className="max-w-3xl mx-auto mb-12">
-          <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <h2 className="text-xl font-black mb-6 border-b-2 border-black pb-2 uppercase italic flex items-center gap-2">
-              <span className="bg-black text-white px-1.5 text-sm">IN</span> Create Record
-            </h2>
-            
-            <form onSubmit={handleSavePost} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block">
-                  <span className="text-[10px] font-black uppercase mb-1 block underline">Type</span>
-                  <select 
-                    className="w-full border-2 border-black p-2 text-sm font-bold bg-white focus:bg-yellow-100 outline-none"
-                    value={formData.type}
-                    onChange={e => setFormData({...formData, type: e.target.value})}
-                  >
-                    <option value="blog">Text / Document</option>
-                    <option value="art">Visual / Artwork</option>
-                  </select>
-                </label>
+        <div className="p-6 md:p-20 min-h-screen flex flex-col items-center justify-center animate-in fade-in duration-500">
+          <div className="w-full max-w-xl space-y-10">
+            <div className="flex justify-between items-center border-b border-black pb-4">
+               <h2 className="text-sm font-black uppercase tracking-widest italic">System_Input_Mode</h2>
+               <button onClick={() => setView('grid')} className="text-[10px] font-black underline hover:no-underline">Cancel_And_Return</button>
+            </div>
 
-                <label className="block">
-                  <span className="text-[10px] font-black uppercase mb-1 block underline">Date</span>
-                  <input 
-                    type="text" 
-                    className="w-full border-2 border-black p-2 text-sm font-bold focus:bg-yellow-100 outline-none"
-                    value={formData.date}
-                    onChange={e => setFormData({...formData, date: e.target.value})}
-                  />
-                </label>
+            <form onSubmit={handleSavePost} className="space-y-8">
+              {/* Custom Type Selector (geen lelijke select meer) */}
+              <div className="flex gap-4">
+                <button 
+                  type="button"
+                  onClick={() => setFormData({...formData, type: 'blog'})}
+                  className={`flex-1 py-3 border border-black font-black text-[10px] uppercase transition-all ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-transparent hover:bg-gray-100'}`}
+                >
+                  Text_Entry
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setFormData({...formData, type: 'art'})}
+                  className={`flex-1 py-3 border border-black font-black text-[10px] uppercase transition-all ${formData.type === 'art' ? 'bg-black text-white' : 'bg-transparent hover:bg-gray-100'}`}
+                >
+                  Visual_Entry
+                </button>
               </div>
 
-              {formData.type === 'art' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="block">
-                    <span className="text-[10px] font-black uppercase mb-1 block underline">Project Title</span>
+              <div className="space-y-4">
+                {formData.type === 'art' ? (
+                  <div className="grid grid-cols-2 gap-4">
                     <input 
                       type="text" 
-                      className="w-full border-2 border-black p-2 text-sm font-bold focus:bg-yellow-100 outline-none"
-                      placeholder="Title..."
+                      placeholder="PROJECT_TITLE" 
+                      className="bg-transparent border-b border-black p-2 text-xs font-bold outline-none focus:border-b-2"
                       value={formData.title}
                       onChange={e => setFormData({...formData, title: e.target.value})}
                     />
-                  </label>
-                  <label className="block">
-                    <span className="text-[10px] font-black uppercase mb-1 block underline">Path (public/art/...)</span>
                     <input 
                       type="text" 
-                      className="w-full border-2 border-black p-2 text-sm font-bold focus:bg-yellow-100 outline-none"
-                      placeholder="/art/file.jpg"
+                      placeholder="PATH (/art/...) " 
+                      className="bg-transparent border-b border-black p-2 text-xs font-bold outline-none focus:border-b-2"
                       value={formData.src}
                       onChange={e => setFormData({...formData, src: e.target.value})}
                     />
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.isTitle} 
+                      onChange={e => setFormData({...formData, isTitle: e.target.checked})}
+                      className="accent-black"
+                    />
+                    <span className="text-[10px] font-black uppercase opacity-50 group-hover:opacity-100">Structural Header Mode</span>
                   </label>
-                </div>
-              )}
-
-              {formData.type === 'blog' && (
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={formData.isTitle} 
-                    onChange={e => setFormData({...formData, isTitle: e.target.checked})}
-                    className="w-4 h-4 border-2 border-black"
-                  />
-                  <span className="text-[10px] font-black uppercase">Visual Header Mode</span>
-                </label>
-              )}
-
-              <label className="block">
-                <span className="text-[10px] font-black uppercase mb-1 block underline">Content Data</span>
+                )}
+                
                 <textarea 
-                  className="w-full border-2 border-black p-3 h-64 text-sm leading-tight focus:bg-yellow-50 outline-none resize-none font-bold"
-                  placeholder="Insert content..."
+                  className="w-full bg-white border border-black p-4 h-64 text-sm font-bold focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all"
+                  placeholder="Insert content here..."
                   value={formData.content}
                   onChange={e => setFormData({...formData, content: e.target.value})}
                 />
-              </label>
+              </div>
 
               <button 
                 type="submit"
-                className="w-full bg-black text-white p-4 font-black text-lg hover:bg-yellow-300 hover:text-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none uppercase italic"
+                className="w-full bg-black text-white py-6 font-black text-xs uppercase tracking-[0.3em] hover:bg-yellow-400 hover:text-black transition-all"
               >
-                Sync to Cloud
+                Commit_To_Database
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* --- GRID (BETER GESCHAAALD) --- */}
+      {/* GRID VIEW */}
       {view === 'grid' && (
-        <div className="max-w-7xl mx-auto">
-          {loading ? (
-            <div className="text-center py-40">
-              <span className="text-sm font-black uppercase animate-pulse border-2 border-black px-4 py-2 bg-white">Loading_Archives...</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {posts.map((post, index) => (
-                <div 
-                  key={post.id} 
-                  onClick={() => setSelectedPost(post)}
-                  className={`
-                    group border-2 border-black cursor-pointer transition-all duration-200
-                    hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:-translate-x-1
-                    ${post.type === 'blog' ? 'bg-yellow-300 p-4 flex flex-col justify-between min-h-[180px]' : 'bg-black relative overflow-hidden aspect-square'}
-                    ${post.isTitle ? 'bg-white col-span-2 aspect-auto py-8 px-6' : ''}
-                    ${index % 10 === 0 && !post.isTitle ? 'md:row-span-2 md:aspect-auto' : ''}
-                  `}
-                >
-                  {post.type === 'blog' && (
-                    <>
-                      <div className="space-y-2">
-                        {!post.isTitle && (
-                          <div className="flex justify-between items-center opacity-40 text-[8px] font-black uppercase">
-                             <span>#{post.id.slice(0,4)}</span>
-                             <span>{post.date}</span>
-                          </div>
-                        )}
-                        <p className={`font-black tracking-tight ${post.isTitle ? 'text-xl md:text-3xl italic underline leading-tight' : 'text-xs line-clamp-6'}`}>
-                          {post.content}
-                        </p>
-                      </div>
-                      {!post.isTitle && <span className="text-[8px] font-black uppercase text-right block mt-2 opacity-30 italic">View_Log</span>}
-                    </>
-                  )}
+        <main className="p-4 md:p-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 auto-rows-auto gap-2 max-w-[1600px] mx-auto">
+            {posts.map((post) => (
+              <div 
+                key={post.id} 
+                onClick={() => setSelectedPost(post)}
+                className={`
+                  border border-black group cursor-pointer transition-all relative
+                  ${post.type === 'art' ? 'md:col-span-2 md:row-span-2 aspect-square' : 'p-4 aspect-square flex flex-col justify-between'}
+                  ${post.isTitle ? 'md:col-span-2 aspect-auto min-h-0 py-10 bg-white' : post.type === 'blog' ? 'bg-yellow-200 hover:bg-yellow-300' : 'bg-black'}
+                `}
+              >
+                {post.type === 'blog' && (
+                  <>
+                    {!post.isTitle && <span className="text-[8px] font-bold opacity-30 uppercase tracking-widest">{post.date}</span>}
+                    <p className={`font-black leading-tight tracking-tighter ${post.isTitle ? 'text-2xl italic underline uppercase' : 'text-[10px] line-clamp-6 uppercase'}`}>
+                      {post.content}
+                    </p>
+                    {!post.isTitle && <span className="text-[8px] font-bold text-right uppercase">Read_More</span>}
+                  </>
+                )}
 
-                  {post.type === 'art' && (
-                    <>
-                      <img 
-                        src={post.src} 
-                        alt={post.title} 
-                        className="object-cover w-full h-full grayscale group-hover:grayscale-0 transition-all duration-500" 
-                        onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=ERR_404'; }}
-                      />
-                      <div className="absolute bottom-2 left-2">
-                         <span className="bg-white text-black border-2 border-black px-1.5 py-0.5 text-[8px] font-black uppercase">
-                            {post.title}
-                         </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                {post.type === 'art' && (
+                  <>
+                    <img 
+                      src={post.src} 
+                      alt={post.title} 
+                      className="object-cover w-full h-full grayscale group-hover:grayscale-0 transition-all duration-700" 
+                    />
+                    <div className="absolute top-2 left-2 bg-white px-2 py-0.5 border border-black text-[8px] font-black uppercase italic shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                      {post.title}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </main>
       )}
 
-      {/* --- MODAL (HET LEESVENSTER - KLEINER & BRUIKBAARDER) --- */}
+      {/* MODAL */}
       {selectedPost && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center p-4 md:p-20 backdrop-blur-md"
           onClick={() => setSelectedPost(null)}
         >
           <div 
-            className="bg-white border-4 border-black max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-[12px_12px_0px_0px_rgba(255,235,59,1)] relative"
+            className="w-full max-w-4xl max-h-full overflow-y-auto bg-white border border-black p-8 md:p-16 relative shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]"
             onClick={e => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b-4 border-black p-4 flex justify-between items-center z-10">
-               <div>
-                  <h2 className="text-xl md:text-2xl font-black uppercase tracking-tighter italic leading-none">
-                    {selectedPost.title || (selectedPost.isTitle ? 'Manifesto' : 'Record')}
-                  </h2>
-                  <p className="text-[10px] font-black text-gray-400 mt-1 uppercase tracking-widest">{selectedPost.date}</p>
-               </div>
-               <button 
-                  onClick={() => setSelectedPost(null)} 
-                  className="bg-black text-white w-8 h-8 font-black border-2 border-black hover:bg-yellow-300 hover:text-black transition-colors flex items-center justify-center"
-                >
-                  X
-               </button>
-            </div>
+            <button onClick={() => setSelectedPost(null)} className="absolute top-6 right-6 font-black text-xs underline hover:no-underline">CLOSE_ENTRY</button>
+            
+            <header className="mb-12 border-b border-black pb-6">
+              <h2 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter underline underline-offset-8">
+                {selectedPost.title || (selectedPost.isTitle ? 'Manifesto' : 'Record')}
+              </h2>
+              <p className="mt-4 text-[10px] font-bold opacity-40 uppercase tracking-widest">{selectedPost.date} // ID: {selectedPost.id}</p>
+            </header>
 
-            {/* Modal Content */}
-            <div className="p-6 md:p-8 space-y-6">
+            <div className="space-y-10">
               {selectedPost.type === 'art' && (
-                <div className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-                   <img src={selectedPost.src} className="w-full grayscale hover:grayscale-0 transition-all duration-1000" alt="Detail" />
-                </div>
+                <img src={selectedPost.src} className="w-full border border-black grayscale hover:grayscale-0 transition-all duration-1000" alt="Art Detail" />
               )}
-              
-              <div className="text-base md:text-lg leading-relaxed whitespace-pre-wrap font-bold text-black text-justify selection:bg-yellow-200">
+              <div className="text-lg md:text-2xl leading-relaxed font-bold text-justify whitespace-pre-wrap">
                 {selectedPost.content}
               </div>
             </div>
-
-            {/* Modal Footer */}
-            <footer className="p-4 border-t-2 border-black bg-gray-50 flex justify-between items-center text-[8px] font-black uppercase opacity-40">
-               <span>Giel te Molder Archive // ID: {selectedPost.id}</span>
-               <span>Status: Active</span>
-            </footer>
           </div>
         </div>
       )}
-
-      {/* --- FOOTER --- */}
-      <footer className="max-w-7xl mx-auto mt-20 border-t-4 border-black pt-4 pb-12 flex justify-between items-start opacity-20 text-[8px] font-black uppercase">
-          <div>
-            Built locally.<br/>Connected globally.<br/>Exposure therapy in progress.
-          </div>
-          <div className="text-lg italic tracking-tighter leading-none">
-            Keep_Logging_
-          </div>
-      </footer>
     </div>
   )
 }
