@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react'
-import { db } from './firebase'; 
+import React, { useState, useEffect } from 'react';
+// Importeer de geconfigureerde services uit je eigen bestand
+import { db, auth, provider } from './firebase'; 
 import { 
-  getFirestore, collection, getDocs, addDoc, serverTimestamp, query, orderBy 
+  collection, getDocs, addDoc, serverTimestamp, query, orderBy 
 } from "firebase/firestore";
 import { 
-  getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
+  signInWithPopup, onAuthStateChanged, signOut 
 } from "firebase/auth";
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
 export default function App() {
   const [posts, setPosts] = useState([]);
@@ -28,7 +25,7 @@ export default function App() {
     date: new Date().toLocaleDateString('nl-NL'),
   });
 
-  // Auth listener
+  // Auth listener: checkt wie er bij de terminal zit
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -36,7 +33,14 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const login = () => signInWithPopup(auth, provider);
+  const login = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login mislukt:", error);
+    }
+  };
+
   const logout = () => signOut(auth);
 
   const haalPostsOp = async () => {
@@ -46,6 +50,7 @@ export default function App() {
       const querySnapshot = await getDocs(q);
       let opgehaaldeData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
+      // Fallback voor handmatige entries zonder timestamp
       if (opgehaaldeData.length === 0) {
         const simpleSnapshot = await getDocs(collection(db, "posts"));
         opgehaaldeData = simpleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -66,15 +71,26 @@ export default function App() {
   const handleSavePost = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, "posts"), { ...formData, timestamp: serverTimestamp() });
-      setFormData({ type: 'blog', content: '', title: '', src: '', isTitle: false, sourceInfo: '', date: new Date().toLocaleDateString('nl-NL') });
+      await addDoc(collection(db, "posts"), { 
+        ...formData, 
+        timestamp: serverTimestamp() 
+      });
+      setFormData({ 
+        type: 'blog', 
+        content: '', 
+        title: '', 
+        src: '', 
+        isTitle: false, 
+        sourceInfo: '', 
+        date: new Date().toLocaleDateString('nl-NL') 
+      });
       setView('grid');
     } catch (err) {
-      alert("Fout bij opslaan: " + err.message);
+      alert("Opslaan mislukt: " + err.message);
     }
   };
 
-  // CSS Injectie om scrollbars te verstoppen
+  // Verberg de scrollbars voor de minimalistische look
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -89,22 +105,20 @@ export default function App() {
     document.head.appendChild(style);
   }, []);
 
-  // Check of de huidige user de admin is
+  // Admin check op jouw e-mailadres
   const isAdmin = user && user.email === "gieltemolder@gmail.com";
 
   return (
     <div className="min-h-screen text-[#1a1a1a] font-mono selection:bg-black selection:text-white pb-20">
       
-      {/* HEADER: Alleen tonen in Grid view */}
+      {/* HEADER: Alleen in Grid view */}
       {view === 'grid' && (
         <header className="p-4 md:p-8 border-b-4 border-black flex justify-between items-center bg-white sticky top-0 z-40 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter italic leading-none hover:tracking-normal transition-all cursor-default">
-                The Archive
-              </h1>
-              <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest mt-1">Exposure Therapy // Connected</p>
-            </div>
+          <div>
+            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter italic leading-none hover:tracking-normal transition-all cursor-default">
+              The Archive
+            </h1>
+            <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest mt-1">Exposure Therapy // Connected</p>
           </div>
           
           <div className="flex gap-4">
@@ -125,7 +139,7 @@ export default function App() {
               </button>
             ) : (
               <div className="flex items-center gap-3 bg-black text-white p-2 pr-4 border-4 border-black shadow-[6px_6px_0_0_rgba(255,235,59,1)]">
-                <img src={user.photoURL} className="w-8 h-8 grayscale border-2 border-white" alt="user" />
+                {user.photoURL && <img src={user.photoURL} className="w-8 h-8 grayscale border-2 border-white" alt="user" />}
                 <button onClick={logout} className="text-[10px] font-black underline uppercase hover:text-yellow-400">Logout_</button>
               </div>
             )}
@@ -133,9 +147,9 @@ export default function App() {
         </header>
       )}
 
-      {/* ADMIN VIEW: Geen header, pure focus */}
+      {/* ADMIN VIEW */}
       {view === 'admin' && (
-        <div className="min-h-screen bg-[#f0f0f0] flex flex-col p-6 md:p-20 animate-in slide-in-from-bottom duration-500 items-center justify-center">
+        <div className="min-h-screen bg-[#f0f0f0] flex flex-col p-6 md:p-20 items-center justify-center animate-in slide-in-from-bottom duration-500">
           <div className="max-w-2xl mx-auto w-full space-y-12 bg-white border-8 border-black p-10 shadow-[20px_20px_0_0_rgba(0,0,0,1)]">
             <div className="flex justify-between items-center border-b-4 border-black pb-6">
               <h2 className="text-4xl font-black italic tracking-tighter uppercase underline decoration-yellow-400 underline-offset-8">Terminal_Input</h2>
@@ -148,7 +162,6 @@ export default function App() {
             </div>
 
             <form onSubmit={handleSavePost} className="space-y-10">
-              {/* Type Toggle */}
               <div className="flex border-4 border-black overflow-hidden shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
                 <button 
                   type="button"
@@ -198,7 +211,7 @@ export default function App() {
                     {formData.isTitle && (
                       <input 
                         type="text" 
-                        placeholder="SOURCE_REFERENCE (bijv. Nietzsche, 1882)" 
+                        placeholder="SOURCE_REFERENCE" 
                         className="w-full bg-transparent border-b-2 border-black p-2 text-xs font-bold outline-none italic"
                         value={formData.sourceInfo}
                         onChange={e => setFormData({...formData, sourceInfo: e.target.value})}
@@ -261,7 +274,7 @@ export default function App() {
                     <img 
                       src={post.src} 
                       alt={post.title} 
-                      className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-1000 block border-2 border-black" 
+                      className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700 block border-2 border-black" 
                       onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=DATA_MISSING'; }}
                     />
                     <div className="absolute top-4 left-4 bg-white border-2 border-black px-2 py-1 text-[8px] font-black uppercase italic shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
