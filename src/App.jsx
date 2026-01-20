@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { app, db } from './firebase'; 
+import { db } from './firebase'; 
 import { 
   getFirestore, collection, getDocs, addDoc, serverTimestamp, query, orderBy 
 } from "firebase/firestore";
@@ -7,6 +7,7 @@ import {
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
 } from "firebase/auth";
 
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
