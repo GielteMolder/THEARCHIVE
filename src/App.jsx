@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { db } from './firebase'; 
-import { collection, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 
 export default function App() {
   const [posts, setPosts] = useState([]);
@@ -58,6 +58,7 @@ export default function App() {
   const handleSavePost = async (e) => {
     e.preventDefault();
     try {
+      // Hier gebruiken we addDoc, die nu bovenaan correct is geïmporteerd
       await addDoc(collection(db, "posts"), {
         ...formData,
         timestamp: serverTimestamp() // Voor de juiste volgorde
