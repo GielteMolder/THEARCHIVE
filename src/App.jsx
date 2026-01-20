@@ -263,7 +263,7 @@ export default function App() {
             <div className="space-y-8 md:space-y-12">
               {selectedPost.type === 'art' && (
                 <div className="border-4 md:border-8 border-black p-1 bg-black">
-                  <img src={selectedPost.src} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000 border-2 border-white" alt="Art" />
+                  <img src={selectedPost.src} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000 border-2 md:border-4 border-white" alt="Art" />
                 </div>
               )}
               {/* Tekst grootte teruggebracht voor betere leesbaarheid */}
@@ -280,8 +280,8 @@ export default function App() {
                       <div key={c.id} className={`p-3 border-2 border-black flex gap-3 ${c.isAdmin ? 'bg-yellow-300' : 'bg-white'} shadow-[3px_3px_0_0_rgba(0,0,0,1)]`}>
                         {c.userPhoto && <img src={c.userPhoto} className="w-7 h-7 md:w-10 md:h-10 border-2 border-black grayscale" alt="av" />}
                         <div>
-                          <p className="text-[7px] md:text-[9px] font-black opacity-50 uppercase">{c.userName} // {c.isAdmin ? 'ADMIN' : 'GEBRUIKER'}</p>
-                          <p className="text-xs md:text-lg font-bold uppercase tracking-tight leading-tight">{c.text}</p>
+                          <p className="text-[7px] md:text-[9px] font-black uppercase opacity-50 mb-1">{c.userName} // {c.isAdmin ? 'ADMIN' : 'GEBRUIKER'}</p>
+                          <p className="text-xs md:text-lg font-bold tracking-tight leading-tight">{c.text}</p>
                         </div>
                       </div>
                     ))
@@ -290,7 +290,7 @@ export default function App() {
 
                 {user ? (
                   <form onSubmit={handleAddComment} className="flex flex-col gap-3">
-                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="SCHRIJF_JE_REACTIE..." className="w-full border-4 border-black p-3 text-xs md:text-lg font-bold focus:bg-yellow-50 outline-none shadow-[4px_4px_0_0_rgba(0,0,0,1)]" />
+                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Schrijf je reactie..." className="w-full border-4 border-black p-3 text-xs md:text-lg font-bold focus:bg-yellow-50 outline-none shadow-[4px_4px_0_0_rgba(0,0,0,1)]" />
                     <button type="submit" className="bg-black text-white py-3 md:py-4 font-black uppercase text-xs md:text-lg hover:bg-yellow-300 hover:text-black transition-all shadow-[6px_6px_0_0_rgba(0,0,0,1)]">SEND_ENTRY</button>
                   </form>
                 ) : (
