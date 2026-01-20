@@ -44,10 +44,13 @@ export default function App() {
     date: new Date().toLocaleDateString('nl-NL'),
   });
 
-  // Auth listener
+  // Luisteren naar de inlogstatus
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        console.log("Ingelogd als:", currentUser.email);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -62,7 +65,7 @@ export default function App() {
 
   const logout = () => signOut(auth);
 
-  // Real-time posts ophalen
+  // Real-time posts ophalen uit de database
   useEffect(() => { 
     const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -73,7 +76,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Comments ophalen
+  // Comments ophalen voor de geselecteerde post
   useEffect(() => {
     if (!selectedPost) return;
     const q = query(collection(db, "posts", selectedPost.id, "comments"), orderBy("timestamp", "asc"));
@@ -96,7 +99,7 @@ export default function App() {
       setFormData({ type: 'blog', content: '', title: '', src: '', isTitle: false, sourceInfo: '', date: new Date().toLocaleDateString('nl-NL') });
       setView('grid');
     } catch (err) {
-      console.error("Fout:", err);
+      console.error("Fout bij opslaan:", err);
     }
   };
 
@@ -109,11 +112,11 @@ export default function App() {
         userName: user.displayName,
         userPhoto: user.photoURL,
         timestamp: serverTimestamp(),
-        isAdmin: user.email === "gielmolder@gmail.com"
+        isAdmin: user.email.toLowerCase() === "gielmolder@gmail.com"
       });
       setNewComment("");
     } catch (err) {
-      console.error(err);
+      console.error("Fout bij commenten:", err);
     }
   };
 
@@ -132,8 +135,8 @@ export default function App() {
     document.head.appendChild(style);
   }, []);
 
-  // NU GEFIXT: Admin check op jouw juiste email
-  const isAdmin = user && user.email === "gielmolder@gmail.com";
+  // Admin check (nu met toLowerCase() voor de zekerheid)
+  const isAdmin = user && user.email && user.email.toLowerCase() === "gielmolder@gmail.com";
 
   return (
     <div className="min-h-screen text-[#1a1a1a] font-mono selection:bg-black selection:text-white pb-20">
@@ -160,9 +163,12 @@ export default function App() {
               </button>
             )}
             {!user ? (
-              <button onClick={login} className="border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)]">LOGIN_</button>
+              <button onClick={login} className="border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:bg-yellow-300">LOGIN_</button>
             ) : (
               <div className="flex items-center gap-2 md:gap-4 bg-black text-white p-1 md:p-2 pr-3 md:pr-6 border-2 md:border-4 border-black">
+                <div className="text-right hidden sm:block">
+                  <p className="text-[7px] font-black uppercase opacity-60">Auth: {user.email}</p>
+                </div>
                 {user.photoURL && <img src={user.photoURL} className="w-6 h-6 md:w-10 md:h-10 grayscale border border-white" alt="u" />}
                 <button onClick={logout} className="text-[8px] md:text-[10px] font-black underline uppercase hover:text-yellow-300">Out_</button>
               </div>
@@ -177,25 +183,25 @@ export default function App() {
           <div className="max-w-3xl mx-auto w-full space-y-8 bg-white border-4 md:border-[10px] border-black p-6 md:p-10 shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[25px_25px_0_0_rgba(0,0,0,1)]">
             <div className="flex justify-between items-center border-b-4 border-black pb-4">
               <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-300 underline-offset-4">Input_Terminal</h2>
-              <button onClick={() => setView('grid')} className="text-[10px] font-black bg-black text-white px-4 py-2 hover:bg-yellow-300 hover:text-black">X</button>
+              <button onClick={() => setView('grid')} className="text-[10px] font-black bg-black text-white px-4 py-2 hover:bg-yellow-300 hover:text-black transition-all border-2 border-black">X</button>
             </div>
 
             <form onSubmit={handleSavePost} className="space-y-6 md:space-y-12">
               <div className="flex border-4 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)]">
-                <button type="button" onClick={() => setFormData({...formData, type: 'blog'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white'}`}>Text</button>
-                <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white'}`}>Visual</button>
+                <button type="button" onClick={() => setFormData({...formData, type: 'blog'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white'}`}>Tekst</button>
+                <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white'}`}>Beeld</button>
               </div>
 
               <div className="space-y-4">
                 {formData.type === 'art' ? (
                   <div className="grid grid-cols-1 gap-4">
-                    <input type="text" placeholder="NAME_OF_WORK" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                    <input type="text" placeholder="PATH (/art/filename.jpg)" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.src} onChange={e => setFormData({...formData, src: e.target.value})} />
+                    <input type="text" placeholder="NAAM_VAN_WERK" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    <input type="text" placeholder="PAD (/art/filename.jpg)" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.src} onChange={e => setFormData({...formData, src: e.target.value})} />
                   </div>
                 ) : (
                   <label className="flex items-center gap-4 cursor-pointer p-4 border-4 border-black font-black uppercase text-[10px] bg-gray-50 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
                     <input type="checkbox" checked={formData.isTitle} onChange={e => setFormData({...formData, isTitle: e.target.checked})} className="w-6 h-6 accent-black" />
-                    <span>Manifesto Mode</span>
+                    <span>Manifesto Modus</span>
                   </label>
                 )}
                 <textarea className="w-full bg-white border-4 border-black p-4 h-64 md:h-96 text-lg font-bold outline-none focus:bg-yellow-50 resize-none" placeholder="RAW_DATA_ENTRY..." value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
@@ -252,7 +258,7 @@ export default function App() {
             
             <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8 md:mb-16 border-b-4 md:border-b-[12px] border-black pb-6 md:pb-12">
               <h2 className="text-3xl md:text-7xl font-black uppercase italic tracking-tighter underline underline-offset-[10px] decoration-yellow-300 leading-tight">
-                {selectedPost.title || (selectedPost.isTitle ? 'Manifesto' : 'Archive_Entry')}
+                {selectedPost.title || (selectedPost.isTitle ? 'Manifesto' : 'Entry')}
               </h2>
               <button onClick={() => setSelectedPost(null)} className="bg-black text-white px-6 py-2 md:px-10 md:py-5 font-black text-xs md:text-sm border-2 md:border-4 border-black shadow-[4px_4px_0_0_rgba(255,235,59,1)] hover:bg-yellow-300 hover:text-black">EXIT_</button>
             </div>
@@ -271,12 +277,12 @@ export default function App() {
               <div className="mt-16 md:mt-32 border-t-4 md:border-t-8 border-black pt-8 md:pt-16">
                 <h3 className="text-xl md:text-4xl font-black uppercase italic mb-8 underline">Responses_</h3>
                 <div className="space-y-4 md:space-y-8 mb-12">
-                  {comments.length === 0 ? <p className="text-[10px] md:text-xs font-bold opacity-30 italic">No responses recorded...</p> : 
+                  {comments.length === 0 ? <p className="text-[10px] md:text-xs font-bold opacity-30 italic">Nog geen reacties...</p> : 
                     comments.map(c => (
                       <div key={c.id} className={`p-4 border-2 md:border-4 border-black flex gap-4 ${c.isAdmin ? 'bg-yellow-300' : 'bg-white'} shadow-[4px_4px_0_0_rgba(0,0,0,1)]`}>
                         {c.userPhoto && <img src={c.userPhoto} className="w-8 h-8 md:w-12 md:h-12 border-2 border-black grayscale" alt="av" />}
                         <div>
-                          <p className="text-[8px] md:text-[10px] font-black opacity-50 uppercase">{c.userName} // {c.isAdmin ? 'ADMIN' : 'USER'}</p>
+                          <p className="text-[8px] md:text-[10px] font-black uppercase opacity-50 mb-1">{c.userName} // {c.isAdmin ? 'ADMIN' : 'GEBRUIKER'}</p>
                           <p className="text-xs md:text-xl font-bold uppercase tracking-tight">{c.text}</p>
                         </div>
                       </div>
@@ -286,11 +292,11 @@ export default function App() {
 
                 {user ? (
                   <form onSubmit={handleAddComment} className="flex flex-col gap-4">
-                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="WRITE_YOUR_RESPONSE..." className="w-full border-4 border-black p-4 text-xs md:text-xl font-bold focus:bg-yellow-50 outline-none shadow-[6px_6px_0_0_rgba(0,0,0,1)]" />
+                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="SCHRIJF_JE_REACTIE..." className="w-full border-4 border-black p-4 text-xs md:text-xl font-bold focus:bg-yellow-50 outline-none shadow-[6px_6px_0_0_rgba(0,0,0,1)]" />
                     <button type="submit" className="bg-black text-white py-4 md:py-6 font-black uppercase text-xs md:text-xl hover:bg-yellow-300 hover:text-black transition-all shadow-[8px_8px_0_0_rgba(0,0,0,1)]">SEND_ENTRY</button>
                   </form>
                 ) : (
-                  <button onClick={login} className="w-full border-4 border-dashed border-black p-6 md:p-10 text-[10px] md:text-xl font-black uppercase hover:bg-yellow-300 transition-colors">LOGIN_TO_RESPOND_</button>
+                  <button onClick={login} className="w-full border-4 border-dashed border-black p-6 md:p-10 text-[10px] md:text-xl font-black uppercase hover:bg-yellow-300 transition-colors">LOGIN_OM_TE_REAGEREN_</button>
                 )}
               </div>
             </div>
