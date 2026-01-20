@@ -139,7 +139,7 @@ export default function App() {
   const isAdmin = user && user.email && user.email.toLowerCase() === "gielmolder@gmail.com";
 
   return (
-    <div className="min-h-screen text-[#1a1a1a] font-mono selection:bg-black selection:text-white pb-20">
+    <div className="min-h-screen text-[#1a1a1a] font-mono selection:bg-black selection:text-white flex flex-col">
       
       {/* HEADER */}
       {view === 'grid' && (
@@ -174,81 +174,109 @@ export default function App() {
         </header>
       )}
 
-      {/* ADMIN VIEW */}
-      {view === 'admin' && (
-        <div className="min-h-screen bg-[#f0f0f0] flex flex-col p-4 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-500">
-          <div className="max-w-3xl mx-auto w-full space-y-8 bg-white border-4 md:border-[10px] border-black p-6 md:p-10 shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[25px_25px_0_0_rgba(0,0,0,1)]">
-            <div className="flex justify-between items-center border-b-4 border-black pb-4">
-              <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-300 underline-offset-4">Input_Terminal</h2>
-              <button onClick={() => setView('grid')} className="text-[10px] font-black bg-black text-white px-4 py-2 hover:bg-yellow-300 hover:text-black transition-all border-2 border-black">X</button>
-            </div>
-
-            <form onSubmit={handleSavePost} className="space-y-6 md:space-y-12">
-              <div className="flex border-4 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)]">
-                <button type="button" onClick={() => setFormData({...formData, type: 'blog'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white'}`}>Tekst</button>
-                <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white'}`}>Beeld</button>
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-grow">
+        {/* ADMIN VIEW */}
+        {view === 'admin' && (
+          <div className="min-h-[80vh] bg-[#f0f0f0] flex flex-col p-4 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-500">
+            <div className="max-w-3xl mx-auto w-full space-y-8 bg-white border-4 md:border-[10px] border-black p-6 md:p-10 shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[25px_25px_0_0_rgba(0,0,0,1)]">
+              <div className="flex justify-between items-center border-b-4 border-black pb-4">
+                <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-300 underline-offset-4">Input_Terminal</h2>
+                <button onClick={() => setView('grid')} className="text-[10px] font-black bg-black text-white px-4 py-2 hover:bg-yellow-300 hover:text-black transition-all border-2 border-black">X</button>
               </div>
 
-              <div className="space-y-4">
-                {formData.type === 'art' ? (
-                  <div className="grid grid-cols-1 gap-4">
-                    <input type="text" placeholder="NAAM_VAN_WERK" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                    <input type="text" placeholder="PAD (/art/filename.jpg)" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.src} onChange={e => setFormData({...formData, src: e.target.value})} />
-                  </div>
-                ) : (
-                  <label className="flex items-center gap-4 cursor-pointer p-4 border-4 border-black font-black uppercase text-[10px] bg-gray-50 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
-                    <input type="checkbox" checked={formData.isTitle} onChange={e => setFormData({...formData, isTitle: e.target.checked})} className="w-6 h-6 accent-black" />
-                    <span>Manifesto Modus</span>
-                  </label>
-                )}
-                <textarea className="w-full bg-white border-4 border-black p-4 h-64 md:h-96 text-lg font-bold outline-none focus:bg-yellow-50 resize-none" placeholder="RAW_DATA_ENTRY..." value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
-              </div>
+              <form onSubmit={handleSavePost} className="space-y-6 md:space-y-12">
+                <div className="flex border-4 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)]">
+                  <button type="button" onClick={() => setFormData({...formData, type: 'blog'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white'}`}>Tekst</button>
+                  <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white'}`}>Beeld</button>
+                </div>
 
-              <button type="submit" className="w-full bg-black text-white py-6 font-black text-2xl md:text-4xl uppercase italic tracking-tighter hover:bg-yellow-300 hover:text-black transition-all shadow-[10px_10px_0_0_rgba(0,0,0,1)]">PUSH_TO_CLOUD_</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* GRID VIEW */}
-      {view === 'grid' && (
-        <main className="p-4 md:p-12">
-          <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-8 max-w-[1700px] mx-auto space-y-4 md:space-y-8">
-            {posts.map((post) => (
-              <div 
-                key={post.id} 
-                onClick={() => setSelectedPost(post)}
-                className={`
-                  break-inside-avoid border-2 md:border-4 border-black group cursor-pointer transition-all mb-4 md:mb-8
-                  shadow-[4px_4px_0_0_rgba(0,0,0,1)] md:shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1
-                  ${post.type === 'art' ? 'bg-black p-0.5' : 'p-4 md:p-8'}
-                  ${post.isTitle ? 'bg-white italic border-l-[8px] md:border-l-[15px]' : post.type === 'blog' ? 'bg-yellow-300' : ''}
-                `}
-              >
-                {post.type === 'blog' && (
-                  <div className="space-y-2 md:space-y-4">
-                    <p className={`font-black tracking-tighter leading-tight uppercase ${post.isTitle ? 'text-lg md:text-3xl' : 'text-[9px] md:text-[12px] line-clamp-[10]'}`}>
-                      {post.isTitle ? `"${post.content}"` : post.content}
-                    </p>
-                    <div className="text-[7px] md:text-[10px] font-black opacity-40 text-right uppercase italic underline underline-offset-4">{post.date}</div>
-                  </div>
-                )}
-
-                {post.type === 'art' && (
-                  <div className="relative">
-                    <img src={post.src} alt={post.title} className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700 block" onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=DATA_MISSING'; }} />
-                    <div className="absolute top-2 left-2 bg-white border-2 border-black px-2 py-0.5 text-[7px] md:text-[10px] font-black uppercase italic shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
-                      {post.title}
+                <div className="space-y-4">
+                  {formData.type === 'art' ? (
+                    <div className="grid grid-cols-1 gap-4">
+                      <input type="text" placeholder="NAAM_VAN_WERK" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                      <input type="text" placeholder="PAD (/art/filename.jpg)" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.src} onChange={e => setFormData({...formData, src: e.target.value})} />
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    <label className="flex items-center gap-4 cursor-pointer p-4 border-4 border-black font-black uppercase text-[10px] bg-gray-50 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+                      <input type="checkbox" checked={formData.isTitle} onChange={e => setFormData({...formData, isTitle: e.target.checked})} className="w-6 h-6 accent-black" />
+                      <span>Manifesto Modus</span>
+                    </label>
+                  )}
+                  <textarea className="w-full bg-white border-4 border-black p-4 h-64 md:h-96 text-lg font-bold outline-none focus:bg-yellow-50 resize-none" placeholder="RAW_DATA_ENTRY..." value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
+                </div>
+
+                <button type="submit" className="w-full bg-black text-white py-6 font-black text-2xl md:text-4xl uppercase italic tracking-tighter hover:bg-yellow-300 hover:text-black transition-all shadow-[10px_10px_0_0_rgba(0,0,0,1)]">PUSH_TO_CLOUD_</button>
+              </form>
+            </div>
           </div>
-        </main>
+        )}
+
+        {/* GRID VIEW */}
+        {view === 'grid' && (
+          <main className="p-4 md:p-12 mb-20">
+            <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-8 max-w-[1700px] mx-auto space-y-4 md:space-y-8">
+              {posts.map((post) => (
+                <div 
+                  key={post.id} 
+                  onClick={() => setSelectedPost(post)}
+                  className={`
+                    break-inside-avoid border-2 md:border-4 border-black group cursor-pointer transition-all mb-4 md:mb-8
+                    shadow-[4px_4px_0_0_rgba(0,0,0,1)] md:shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1
+                    ${post.type === 'art' ? 'bg-black p-0.5' : 'p-4 md:p-8'}
+                    ${post.isTitle ? 'bg-white italic border-l-[8px] md:border-l-[15px]' : post.type === 'blog' ? 'bg-yellow-300' : ''}
+                  `}
+                >
+                  {post.type === 'blog' && (
+                    <div className="space-y-2 md:space-y-4">
+                      <p className={`font-black tracking-tighter leading-tight uppercase ${post.isTitle ? 'text-lg md:text-3xl' : 'text-[9px] md:text-[12px] line-clamp-[10]'}`}>
+                        {post.isTitle ? `"${post.content}"` : post.content}
+                      </p>
+                      <div className="text-[7px] md:text-[10px] font-black opacity-40 text-right uppercase italic underline underline-offset-4">{post.date}</div>
+                    </div>
+                  )}
+
+                  {post.type === 'art' && (
+                    <div className="relative">
+                      <img src={post.src} alt={post.title} className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700 block" onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=DATA_MISSING'; }} />
+                      <div className="absolute top-2 left-2 bg-white border-2 border-black px-2 py-0.5 text-[7px] md:text-[10px] font-black uppercase italic shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
+                        {post.title}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </main>
+        )}
+      </div>
+
+      {/* SITE FOOTER: Exposure Therapy Style */}
+      {view === 'grid' && (
+        <footer className="mt-auto border-t-8 border-black bg-white grid grid-cols-1 md:grid-cols-3">
+          <div className="p-6 md:p-10 border-b-8 md:border-b-0 md:border-r-8 border-black space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Contact_</h4>
+            <a href="mailto:gielmolder@gmail.com" className="block text-xl md:text-2xl font-black italic hover:underline decoration-yellow-300 decoration-4">gielmolder@gmail.com</a>
+          </div>
+          
+          <div className="p-6 md:p-10 border-b-8 md:border-b-0 md:border-r-8 border-black space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Socials_</h4>
+            <div className="flex flex-col gap-2">
+              <a href="https://instagram.com/gieltemolder" target="_blank" className="text-xl md:text-2xl font-black italic hover:underline decoration-yellow-300 decoration-4">@gieltemolder</a>
+            </div>
+          </div>
+
+          <div className="p-6 md:p-10 space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Archive_Info</h4>
+            <div className="flex justify-between items-end">
+              <p className="text-xl md:text-2xl font-black leading-none italic uppercase tracking-tighter max-w-[150px]">Exposure Therapy / Giel te Molder</p>
+              <p className="text-[10px] font-black opacity-30 tracking-widest leading-none">©2026</p>
+            </div>
+          </div>
+        </footer>
       )}
 
-      {/* MODAL: Nu compacter en beter geschaald */}
+      {/* MODAL */}
       {selectedPost && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-2 md:p-12 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setSelectedPost(null)}>
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white border-4 md:border-[8px] border-black p-5 md:p-10 relative shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[20px_20px_0_0_rgba(0,0,0,1)]" onClick={e => e.stopPropagation()}>
@@ -266,7 +294,6 @@ export default function App() {
                   <img src={selectedPost.src} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000 border-2 md:border-4 border-white" alt="Art" />
                 </div>
               )}
-              {/* Tekst grootte teruggebracht voor betere leesbaarheid */}
               <div className="text-lg md:text-2xl leading-snug font-black text-black text-justify whitespace-pre-wrap tracking-tighter uppercase selection:bg-yellow-300">
                 {selectedPost.content}
               </div>
