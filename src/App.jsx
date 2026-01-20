@@ -165,10 +165,7 @@ export default function App() {
             {!user ? (
               <button onClick={login} className="border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:bg-yellow-300">LOGIN_</button>
             ) : (
-              <div className="flex items-center gap-2 md:gap-4 bg-black text-white p-1 md:p-2 pr-3 md:pr-6 border-2 md:border-4 border-black">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[7px] font-black uppercase opacity-60">Auth: {user.email}</p>
-                </div>
+              <div className="flex items-center gap-2 md:gap-4 bg-black text-white p-1 md:p-2 pr-3 md:pr-6 border-2 md:border-4 border-black shadow-[4px_4px_0_0_rgba(0,0,0,0.2)]">
                 {user.photoURL && <img src={user.photoURL} className="w-6 h-6 md:w-10 md:h-10 grayscale border border-white" alt="u" />}
                 <button onClick={logout} className="text-[8px] md:text-[10px] font-black underline uppercase hover:text-yellow-300">Out_</button>
               </div>
@@ -251,39 +248,40 @@ export default function App() {
         </main>
       )}
 
-      {/* MODAL */}
+      {/* MODAL: Nu compacter en beter geschaald */}
       {selectedPost && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-2 md:p-12 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setSelectedPost(null)}>
-          <div className="w-full max-w-5xl max-h-[95vh] overflow-y-auto bg-white border-4 md:border-[10px] border-black p-6 md:p-16 relative shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[30px_30px_0_0_rgba(0,0,0,1)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white border-4 md:border-[8px] border-black p-5 md:p-10 relative shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[20px_20px_0_0_rgba(0,0,0,1)]" onClick={e => e.stopPropagation()}>
             
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8 md:mb-16 border-b-4 md:border-b-[12px] border-black pb-6 md:pb-12">
-              <h2 className="text-3xl md:text-7xl font-black uppercase italic tracking-tighter underline underline-offset-[10px] decoration-yellow-300 leading-tight">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-3 mb-6 md:mb-10 border-b-4 md:border-b-8 border-black pb-4 md:pb-8">
+              <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter underline underline-offset-4 decoration-yellow-300 leading-tight">
                 {selectedPost.title || (selectedPost.isTitle ? 'Manifesto' : 'Entry')}
               </h2>
-              <button onClick={() => setSelectedPost(null)} className="bg-black text-white px-6 py-2 md:px-10 md:py-5 font-black text-xs md:text-sm border-2 md:border-4 border-black shadow-[4px_4px_0_0_rgba(255,235,59,1)] hover:bg-yellow-300 hover:text-black">EXIT_</button>
+              <button onClick={() => setSelectedPost(null)} className="bg-black text-white px-5 py-2 md:px-8 md:py-3 font-black text-xs border-2 md:border-4 border-black hover:bg-yellow-300 hover:text-black transition-colors">EXIT_</button>
             </div>
 
-            <div className="space-y-12">
+            <div className="space-y-8 md:space-y-12">
               {selectedPost.type === 'art' && (
-                <div className="border-4 md:border-[12px] border-black p-1 md:p-3 bg-black">
-                  <img src={selectedPost.src} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000 border-2 md:border-4 border-white" alt="Art" />
+                <div className="border-4 md:border-8 border-black p-1 bg-black">
+                  <img src={selectedPost.src} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000 border-2 border-white" alt="Art" />
                 </div>
               )}
-              <div className="text-xl md:text-5xl leading-[1.1] font-black text-black text-justify whitespace-pre-wrap tracking-tighter uppercase selection:bg-yellow-300">
+              {/* Tekst grootte teruggebracht voor betere leesbaarheid */}
+              <div className="text-lg md:text-2xl leading-snug font-black text-black text-justify whitespace-pre-wrap tracking-tighter uppercase selection:bg-yellow-300">
                 {selectedPost.content}
               </div>
 
               {/* COMMENTS SECTION */}
-              <div className="mt-16 md:mt-32 border-t-4 md:border-t-8 border-black pt-8 md:pt-16">
-                <h3 className="text-xl md:text-4xl font-black uppercase italic mb-8 underline">Responses_</h3>
-                <div className="space-y-4 md:space-y-8 mb-12">
+              <div className="mt-12 md:mt-20 border-t-4 md:border-t-8 border-black pt-6 md:pt-10">
+                <h3 className="text-lg md:text-3xl font-black uppercase italic mb-6 underline">Responses_</h3>
+                <div className="space-y-3 md:space-y-6 mb-8">
                   {comments.length === 0 ? <p className="text-[10px] md:text-xs font-bold opacity-30 italic">Nog geen reacties...</p> : 
                     comments.map(c => (
-                      <div key={c.id} className={`p-4 border-2 md:border-4 border-black flex gap-4 ${c.isAdmin ? 'bg-yellow-300' : 'bg-white'} shadow-[4px_4px_0_0_rgba(0,0,0,1)]`}>
-                        {c.userPhoto && <img src={c.userPhoto} className="w-8 h-8 md:w-12 md:h-12 border-2 border-black grayscale" alt="av" />}
+                      <div key={c.id} className={`p-3 border-2 border-black flex gap-3 ${c.isAdmin ? 'bg-yellow-300' : 'bg-white'} shadow-[3px_3px_0_0_rgba(0,0,0,1)]`}>
+                        {c.userPhoto && <img src={c.userPhoto} className="w-7 h-7 md:w-10 md:h-10 border-2 border-black grayscale" alt="av" />}
                         <div>
-                          <p className="text-[8px] md:text-[10px] font-black uppercase opacity-50 mb-1">{c.userName} // {c.isAdmin ? 'ADMIN' : 'GEBRUIKER'}</p>
-                          <p className="text-xs md:text-xl font-bold uppercase tracking-tight">{c.text}</p>
+                          <p className="text-[7px] md:text-[9px] font-black opacity-50 uppercase">{c.userName} // {c.isAdmin ? 'ADMIN' : 'GEBRUIKER'}</p>
+                          <p className="text-xs md:text-lg font-bold uppercase tracking-tight leading-tight">{c.text}</p>
                         </div>
                       </div>
                     ))
@@ -291,12 +289,12 @@ export default function App() {
                 </div>
 
                 {user ? (
-                  <form onSubmit={handleAddComment} className="flex flex-col gap-4">
-                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="SCHRIJF_JE_REACTIE..." className="w-full border-4 border-black p-4 text-xs md:text-xl font-bold focus:bg-yellow-50 outline-none shadow-[6px_6px_0_0_rgba(0,0,0,1)]" />
-                    <button type="submit" className="bg-black text-white py-4 md:py-6 font-black uppercase text-xs md:text-xl hover:bg-yellow-300 hover:text-black transition-all shadow-[8px_8px_0_0_rgba(0,0,0,1)]">SEND_ENTRY</button>
+                  <form onSubmit={handleAddComment} className="flex flex-col gap-3">
+                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="SCHRIJF_JE_REACTIE..." className="w-full border-4 border-black p-3 text-xs md:text-lg font-bold focus:bg-yellow-50 outline-none shadow-[4px_4px_0_0_rgba(0,0,0,1)]" />
+                    <button type="submit" className="bg-black text-white py-3 md:py-4 font-black uppercase text-xs md:text-lg hover:bg-yellow-300 hover:text-black transition-all shadow-[6px_6px_0_0_rgba(0,0,0,1)]">SEND_ENTRY</button>
                   </form>
                 ) : (
-                  <button onClick={login} className="w-full border-4 border-dashed border-black p-6 md:p-10 text-[10px] md:text-xl font-black uppercase hover:bg-yellow-300 transition-colors">LOGIN_OM_TE_REAGEREN_</button>
+                  <button onClick={login} className="w-full border-4 border-dashed border-black p-4 md:p-8 text-[10px] md:text-lg font-black uppercase hover:bg-yellow-300 transition-colors">LOGIN_OM_TE_REAGEREN_</button>
                 )}
               </div>
             </div>
