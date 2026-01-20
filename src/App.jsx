@@ -7,7 +7,10 @@ import {
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
 } from "firebase/auth";
 
-// --- FIREBASE CONFIGURATIE ---
+// --- CONFIGURATIE ---
+// De 'Archive Yellow' kleurcode die we overal gebruiken: #fde047 (Tailwind yellow-300)
+const ARCHIVE_YELLOW = "#fde047";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCQyGS486-RohBd3FHBQENIhH0PSkInwBs",
   authDomain: "expothearchive.firebaseapp.com",
@@ -17,7 +20,6 @@ const firebaseConfig = {
   appId: "1:18895439101:web:c17f8c3e565147f7396a94"
 };
 
-// Initialisatie
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
@@ -42,7 +44,7 @@ export default function App() {
     date: new Date().toLocaleDateString('nl-NL'),
   });
 
-  // Authenticatie listener
+  // Auth listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -50,46 +52,30 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Verbeterde login functie met specifieke stappen voor 'operation-not-allowed'
   const login = async () => {
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Inloggen mislukt:", error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        alert("De login popup werd gesloten voordat je kon inloggen.");
-      } else if (error.code === 'auth/unauthorized-domain') {
-        alert("Dit domein is niet toegestaan voor inloggen. Voeg dit domein toe aan 'Authorized Domains' in je Firebase Console.");
-      } else if (error.code === 'auth/operation-not-allowed') {
-        alert("STAP VEREIST: Google inloggen staat nog uit in Firebase! Ga naar: Console > Authentication > Sign-in method > Enable Google.");
-      } else {
-        alert("Inlogfout: " + error.message);
-      }
     }
   };
 
   const logout = () => signOut(auth);
 
-  // Haal posts op
+  // Real-time posts ophalen
   useEffect(() => { 
     const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const opgehaaldeData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPosts(opgehaaldeData);
       setLoading(false);
-    }, (err) => {
-      console.error("Database fout:", err);
-      setLoading(false);
     });
     return () => unsubscribe();
-  }, [view]);
+  }, []);
 
-  // Haal comments op voor de geselecteerde post
+  // Comments ophalen
   useEffect(() => {
-    if (!selectedPost) {
-      setComments([]);
-      return;
-    }
+    if (!selectedPost) return;
     const q = query(collection(db, "posts", selectedPost.id, "comments"), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -107,40 +93,30 @@ export default function App() {
         timestamp: serverTimestamp(),
         authorEmail: user.email 
       });
-      setFormData({ 
-        type: 'blog', 
-        content: '', 
-        title: '', 
-        src: '', 
-        isTitle: false, 
-        sourceInfo: '', 
-        date: new Date().toLocaleDateString('nl-NL') 
-      });
+      setFormData({ type: 'blog', content: '', title: '', src: '', isTitle: false, sourceInfo: '', date: new Date().toLocaleDateString('nl-NL') });
       setView('grid');
     } catch (err) {
-      console.error("Opslaan mislukt:", err);
+      console.error("Fout:", err);
     }
   };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim() || !user || !selectedPost) return;
-
     try {
       await addDoc(collection(db, "posts", selectedPost.id, "comments"), {
         text: newComment,
         userName: user.displayName,
         userPhoto: user.photoURL,
         timestamp: serverTimestamp(),
-        isAdmin: user.email === "gieltemolder@gmail.com"
+        isAdmin: user.email === "gielmolder@gmail.com"
       });
       setNewComment("");
     } catch (err) {
-      console.error("Comment plaatsen mislukt:", err);
+      console.error(err);
     }
   };
 
-  // Verberg scrollbars
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -156,46 +132,39 @@ export default function App() {
     document.head.appendChild(style);
   }, []);
 
-  const isAdmin = user && user.email === "gieltemolder@gmail.com";
+  // NU GEFIXT: Admin check op jouw juiste email
+  const isAdmin = user && user.email === "gielmolder@gmail.com";
 
   return (
     <div className="min-h-screen text-[#1a1a1a] font-mono selection:bg-black selection:text-white pb-20">
       
       {/* HEADER */}
       {view === 'grid' && (
-        <header className="p-4 md:p-10 border-b-8 border-black flex justify-between items-center bg-white sticky top-0 z-40 shadow-[0_8px_0_0_rgba(0,0,0,1)]">
-          <div className="group cursor-default">
-            <h1 className="text-3xl md:text-6xl font-black uppercase tracking-tighter italic leading-none group-hover:tracking-normal transition-all">
+        <header className="p-4 md:p-10 border-b-8 border-black flex justify-between items-center bg-white sticky top-0 z-40 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
+          <div className="group cursor-default pr-4">
+            <h1 className="text-2xl md:text-6xl font-black uppercase tracking-tighter italic leading-none break-words max-w-[200px] md:max-w-none">
               The Archive
             </h1>
-            <p className="text-[10px] md:text-xs font-bold bg-black text-white px-2 py-1 mt-2 inline-block uppercase tracking-widest">
+            <p className="text-[8px] md:text-xs font-bold bg-black text-white px-2 py-1 mt-2 inline-block uppercase tracking-widest">
               Exposure Therapy // Giel te Molder
             </p>
           </div>
           
-          <div className="flex gap-4">
+          <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-end md:items-center">
             {isAdmin && (
               <button 
                 onClick={() => setView('admin')}
-                className="bg-yellow-400 border-4 border-black px-6 py-3 text-xs font-black uppercase shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                className="bg-yellow-300 border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
               >
-                + NIEUWE_INVOER
+                + ADD_ENTRY
               </button>
             )}
             {!user ? (
-              <button 
-                onClick={login} 
-                className="border-4 border-black px-6 py-3 text-xs font-black uppercase bg-white shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-              >
-                LOGIN_
-              </button>
+              <button onClick={login} className="border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)]">LOGIN_</button>
             ) : (
-              <div className="flex items-center gap-4 bg-black text-white p-2 pr-6 border-4 border-black shadow-[8px_8px_0_0_rgba(255,235,59,1)]">
-                {user.photoURL && <img src={user.photoURL} className="w-10 h-10 grayscale border-2 border-white" alt="gebruiker" />}
-                <div className="hidden sm:block text-left">
-                  <p className="text-[8px] font-black opacity-50 uppercase">{user.displayName}</p>
-                  <button onClick={logout} className="text-[10px] font-black underline uppercase hover:text-yellow-400 block text-left">Logout_</button>
-                </div>
+              <div className="flex items-center gap-2 md:gap-4 bg-black text-white p-1 md:p-2 pr-3 md:pr-6 border-2 md:border-4 border-black">
+                {user.photoURL && <img src={user.photoURL} className="w-6 h-6 md:w-10 md:h-10 grayscale border border-white" alt="u" />}
+                <button onClick={logout} className="text-[8px] md:text-[10px] font-black underline uppercase hover:text-yellow-300">Out_</button>
               </div>
             )}
           </div>
@@ -204,135 +173,68 @@ export default function App() {
 
       {/* ADMIN VIEW */}
       {view === 'admin' && (
-        <div className="min-h-screen bg-[#f0f0f0] flex flex-col p-6 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-700">
-          <div className="max-w-3xl mx-auto w-full space-y-12 bg-white border-[10px] border-black p-10 shadow-[25px_25px_0_0_rgba(0,0,0,1)]">
-            <div className="flex justify-between items-center border-b-8 border-black pb-8">
-              <h2 className="text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-400 underline-offset-[12px]">System_Input</h2>
-              <button 
-                onClick={() => setView('grid')} 
-                className="text-xs font-black bg-black text-white px-8 py-4 hover:bg-yellow-400 hover:text-black transition-all border-4 border-black"
-              >
-                STOPPEN_
-              </button>
+        <div className="min-h-screen bg-[#f0f0f0] flex flex-col p-4 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-500">
+          <div className="max-w-3xl mx-auto w-full space-y-8 bg-white border-4 md:border-[10px] border-black p-6 md:p-10 shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[25px_25px_0_0_rgba(0,0,0,1)]">
+            <div className="flex justify-between items-center border-b-4 border-black pb-4">
+              <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-300 underline-offset-4">Input_Terminal</h2>
+              <button onClick={() => setView('grid')} className="text-[10px] font-black bg-black text-white px-4 py-2 hover:bg-yellow-300 hover:text-black">X</button>
             </div>
 
-            <form onSubmit={handleSavePost} className="space-y-12">
-              <div className="flex border-4 border-black overflow-hidden shadow-[10px_10px_0_0_rgba(0,0,0,1)]">
-                <button 
-                  type="button"
-                  onClick={() => setFormData({...formData, type: 'blog'})}
-                  className={`flex-1 py-6 font-black uppercase text-sm transition-colors ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white hover:bg-yellow-100'}`}
-                >
-                  TEKST_LOG
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setFormData({...formData, type: 'art'})}
-                  className={`flex-1 py-4 font-black uppercase text-sm transition-colors ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white hover:bg-yellow-100'}`}
-                >
-                  BEELD_DATA
-                </button>
+            <form onSubmit={handleSavePost} className="space-y-6 md:space-y-12">
+              <div className="flex border-4 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)]">
+                <button type="button" onClick={() => setFormData({...formData, type: 'blog'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white'}`}>Text</button>
+                <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-3 md:py-6 font-black uppercase text-[10px] md:text-sm ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white'}`}>Visual</button>
               </div>
 
-              <div className="space-y-8">
+              <div className="space-y-4">
                 {formData.type === 'art' ? (
-                  <div className="grid grid-cols-1 gap-8">
-                    <input 
-                      type="text" 
-                      placeholder="BESTANDS_IDENTIFICATIE" 
-                      className="w-full bg-transparent border-b-4 border-black p-4 text-2xl font-black outline-none placeholder:opacity-20 uppercase focus:border-yellow-400"
-                      value={formData.title}
-                      onChange={e => setFormData({...formData, title: e.target.value})}
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="LOKAAL_PAD (/art/bestandsnaam.jpg)" 
-                      className="w-full bg-transparent border-b-4 border-black p-4 text-2xl font-black outline-none placeholder:opacity-20 focus:border-yellow-400"
-                      value={formData.src}
-                      onChange={e => setFormData({...formData, src: e.target.value})}
-                    />
+                  <div className="grid grid-cols-1 gap-4">
+                    <input type="text" placeholder="NAME_OF_WORK" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    <input type="text" placeholder="PATH (/art/filename.jpg)" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.src} onChange={e => setFormData({...formData, src: e.target.value})} />
                   </div>
                 ) : (
-                  <div className="space-y-8">
-                    <label className="flex items-center gap-6 cursor-pointer p-6 border-4 border-black font-black uppercase text-sm bg-gray-50 hover:bg-yellow-400 transition-colors shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-none">
-                      <input 
-                        type="checkbox" 
-                        checked={formData.isTitle} 
-                        onChange={e => setFormData({...formData, isTitle: e.target.checked})}
-                        className="w-8 h-8 accent-black"
-                      />
-                      <span>Manifesto Modus (Grote Quotes)</span>
-                    </label>
-                    {formData.isTitle && (
-                      <input 
-                        type="text" 
-                        placeholder="BRON_VERMELDING" 
-                        className="w-full bg-transparent border-b-4 border-black p-4 text-xl font-black outline-none italic uppercase placeholder:opacity-20"
-                        value={formData.sourceInfo}
-                        onChange={e => setFormData({...formData, sourceInfo: e.target.value})}
-                      />
-                    )}
-                  </div>
+                  <label className="flex items-center gap-4 cursor-pointer p-4 border-4 border-black font-black uppercase text-[10px] bg-gray-50 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+                    <input type="checkbox" checked={formData.isTitle} onChange={e => setFormData({...formData, isTitle: e.target.checked})} className="w-6 h-6 accent-black" />
+                    <span>Manifesto Mode</span>
+                  </label>
                 )}
-                
-                <textarea 
-                  className="w-full bg-white border-4 border-black p-8 h-96 text-xl font-bold shadow-[12px_12px_0_0_rgba(0,0,0,1)] outline-none transition-all placeholder:opacity-20 focus:bg-yellow-50 resize-none"
-                  placeholder="INVOER_RAW_DATA..."
-                  value={formData.content}
-                  onChange={e => setFormData({...formData, content: e.target.value})}
-                />
+                <textarea className="w-full bg-white border-4 border-black p-4 h-64 md:h-96 text-lg font-bold outline-none focus:bg-yellow-50 resize-none" placeholder="RAW_DATA_ENTRY..." value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
               </div>
 
-              <button 
-                type="submit"
-                className="w-full bg-black text-white py-6 font-black text-4xl uppercase italic tracking-tighter hover:bg-yellow-400 hover:text-black transition-all shadow-[20px_20px_0_0_rgba(255,235,59,1)] active:translate-y-2 active:shadow-none"
-              >
-                PUSH_NAAR_CLOUD_
-              </button>
+              <button type="submit" className="w-full bg-black text-white py-6 font-black text-2xl md:text-4xl uppercase italic tracking-tighter hover:bg-yellow-300 hover:text-black transition-all shadow-[10px_10px_0_0_rgba(0,0,0,1)]">PUSH_TO_CLOUD_</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* HET GRID */}
+      {/* GRID VIEW */}
       {view === 'grid' && (
-        <main className="p-4 md:p-12 mt-8">
-          <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-8 max-w-[1700px] mx-auto space-y-8">
+        <main className="p-4 md:p-12">
+          <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-8 max-w-[1700px] mx-auto space-y-4 md:space-y-8">
             {posts.map((post) => (
               <div 
                 key={post.id} 
                 onClick={() => setSelectedPost(post)}
                 className={`
-                  break-inside-avoid border-4 border-black group cursor-pointer transition-all mb-8
-                  shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1
-                  ${post.type === 'art' ? 'bg-black p-1' : 'p-6'}
-                  ${post.isTitle ? 'bg-white italic border-l-[15px]' : post.type === 'blog' ? 'bg-yellow-400 hover:bg-yellow-500' : ''}
+                  break-inside-avoid border-2 md:border-4 border-black group cursor-pointer transition-all mb-4 md:mb-8
+                  shadow-[4px_4px_0_0_rgba(0,0,0,1)] md:shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1
+                  ${post.type === 'art' ? 'bg-black p-0.5' : 'p-4 md:p-8'}
+                  ${post.isTitle ? 'bg-white italic border-l-[8px] md:border-l-[15px]' : post.type === 'blog' ? 'bg-yellow-300' : ''}
                 `}
               >
                 {post.type === 'blog' && (
-                  <div className="space-y-4">
-                    {!post.isTitle && (
-                      <div className="flex justify-between items-center mb-4 border-b-4 border-black/10 pb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest">{post.date}</span>
-                        <div className="w-3 h-3 bg-black rounded-full animate-pulse"></div>
-                      </div>
-                    )}
-                    <p className={`font-black tracking-tighter leading-tight uppercase ${post.isTitle ? 'text-xl md:text-2xl py-2' : 'text-[11px] line-clamp-[15]'}`}>
+                  <div className="space-y-2 md:space-y-4">
+                    <p className={`font-black tracking-tighter leading-tight uppercase ${post.isTitle ? 'text-lg md:text-3xl' : 'text-[9px] md:text-[12px] line-clamp-[10]'}`}>
                       {post.isTitle ? `"${post.content}"` : post.content}
                     </p>
-                    {!post.isTitle && <div className="text-[10px] font-black mt-6 opacity-40 text-right uppercase italic underline underline-offset-4">LOG_LEZEN_</div>}
+                    <div className="text-[7px] md:text-[10px] font-black opacity-40 text-right uppercase italic underline underline-offset-4">{post.date}</div>
                   </div>
                 )}
 
                 {post.type === 'art' && (
-                  <div className="relative overflow-hidden">
-                    <img 
-                      src={post.src} 
-                      alt={post.title} 
-                      className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-1000 block border-2 border-black" 
-                      onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=DATA_MISSING'; }}
-                    />
-                    <div className="absolute top-4 left-4 bg-white border-4 border-black px-3 py-1 text-[10px] font-black uppercase italic shadow-[6px_6px_0_0_rgba(0,0,0,1)]">
+                  <div className="relative">
+                    <img src={post.src} alt={post.title} className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700 block" onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=DATA_MISSING'; }} />
+                    <div className="absolute top-2 left-2 bg-white border-2 border-black px-2 py-0.5 text-[7px] md:text-[10px] font-black uppercase italic shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
                       {post.title}
                     </div>
                   </div>
@@ -343,86 +245,55 @@ export default function App() {
         </main>
       )}
 
-      {/* DETAIL VENSTER */}
+      {/* MODAL */}
       {selectedPost && (
-        <div 
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 md:p-12 backdrop-blur-md animate-in fade-in duration-300"
-          onClick={() => setSelectedPost(null)}
-        >
-          <div 
-            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white border-[10px] border-black p-6 md:p-12 relative shadow-[25px_25px_0_0_rgba(255,235,59,1)]"
-            onClick={e => e.stopPropagation()}
-          >
-            <button 
-              onClick={() => setSelectedPost(null)} 
-              className="absolute top-8 right-8 font-black text-xs bg-black text-white px-8 py-4 hover:bg-yellow-400 hover:text-black transition-colors border-4 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] active:shadow-none"
-            >
-              ARCHIEF_VERLATEN_
-            </button>
+        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-2 md:p-12 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setSelectedPost(null)}>
+          <div className="w-full max-w-5xl max-h-[95vh] overflow-y-auto bg-white border-4 md:border-[10px] border-black p-6 md:p-16 relative shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[30px_30px_0_0_rgba(0,0,0,1)]" onClick={e => e.stopPropagation()}>
             
-            <header className="mb-12 border-b-[12px] border-black pb-8">
-              <h2 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter underline underline-offset-[12px] decoration-yellow-400 leading-none">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8 md:mb-16 border-b-4 md:border-b-[12px] border-black pb-6 md:pb-12">
+              <h2 className="text-3xl md:text-7xl font-black uppercase italic tracking-tighter underline underline-offset-[10px] decoration-yellow-300 leading-tight">
                 {selectedPost.title || (selectedPost.isTitle ? 'Manifesto' : 'Archive_Entry')}
               </h2>
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-10">
-                <p className="text-[10px] font-black opacity-40 uppercase tracking-[0.3em]">{selectedPost.date} // NODE_ID_{selectedPost.id.slice(0,8)}</p>
-                {selectedPost.sourceInfo && <span className="text-[10px] font-black bg-black text-white px-3 py-1 italic shadow-[4px_4px_0_0_rgba(255,235,59,1)] uppercase tracking-widest">BRON: {selectedPost.sourceInfo}</span>}
-              </div>
-            </header>
+              <button onClick={() => setSelectedPost(null)} className="bg-black text-white px-6 py-2 md:px-10 md:py-5 font-black text-xs md:text-sm border-2 md:border-4 border-black shadow-[4px_4px_0_0_rgba(255,235,59,1)] hover:bg-yellow-300 hover:text-black">EXIT_</button>
+            </div>
 
-            <div className="space-y-16">
+            <div className="space-y-12">
               {selectedPost.type === 'art' && (
-                <div className="border-[12px] border-black p-3 bg-black shadow-[20px_20px_0_0_rgba(0,0,0,1)]">
-                  <img src={selectedPost.src} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000 border-4 border-white" alt="Beeld Detail" />
+                <div className="border-4 md:border-[12px] border-black p-1 md:p-3 bg-black">
+                  <img src={selectedPost.src} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000 border-2 md:border-4 border-white" alt="Art" />
                 </div>
               )}
-              <div className="text-2xl md:text-4xl leading-[1.1] font-black text-black text-justify whitespace-pre-wrap tracking-tighter uppercase selection:bg-yellow-400">
+              <div className="text-xl md:text-5xl leading-[1.1] font-black text-black text-justify whitespace-pre-wrap tracking-tighter uppercase selection:bg-yellow-300">
                 {selectedPost.content}
               </div>
 
-              {/* COMMENTS */}
-              <div className="mt-20 border-t-8 border-black pt-12">
-                <h3 className="text-2xl font-black uppercase italic mb-8 underline">Responses_</h3>
-                
-                <div className="space-y-6 mb-12">
-                  {comments.length === 0 ? (
-                    <p className="text-xs font-bold opacity-30 uppercase italic">Geen responses gevonden...</p>
-                  ) : (
-                    comments.map(comment => (
-                      <div key={comment.id} className={`p-4 border-2 border-black flex gap-4 ${comment.isAdmin ? 'bg-yellow-100 shadow-[6px_6px_0_0_rgba(0,0,0,1)]' : 'bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)]'}`}>
-                        {comment.userPhoto && <img src={comment.userPhoto} className="w-8 h-8 grayscale border border-black" alt="avatar" />}
+              {/* COMMENTS SECTION */}
+              <div className="mt-16 md:mt-32 border-t-4 md:border-t-8 border-black pt-8 md:pt-16">
+                <h3 className="text-xl md:text-4xl font-black uppercase italic mb-8 underline">Responses_</h3>
+                <div className="space-y-4 md:space-y-8 mb-12">
+                  {comments.length === 0 ? <p className="text-[10px] md:text-xs font-bold opacity-30 italic">No responses recorded...</p> : 
+                    comments.map(c => (
+                      <div key={c.id} className={`p-4 border-2 md:border-4 border-black flex gap-4 ${c.isAdmin ? 'bg-yellow-300' : 'bg-white'} shadow-[4px_4px_0_0_rgba(0,0,0,1)]`}>
+                        {c.userPhoto && <img src={c.userPhoto} className="w-8 h-8 md:w-12 md:h-12 border-2 border-black grayscale" alt="av" />}
                         <div>
-                          <p className="text-[10px] font-black uppercase opacity-50 mb-1">{comment.userName} // {comment.isAdmin ? '[ADMIN]' : '[USER]'}</p>
-                          <p className="text-sm font-bold uppercase">{comment.text}</p>
+                          <p className="text-[8px] md:text-[10px] font-black opacity-50 uppercase">{c.userName} // {c.isAdmin ? 'ADMIN' : 'USER'}</p>
+                          <p className="text-xs md:text-xl font-bold uppercase tracking-tight">{c.text}</p>
                         </div>
                       </div>
                     ))
-                  )}
+                  }
                 </div>
 
                 {user ? (
                   <form onSubmit={handleAddComment} className="flex flex-col gap-4">
-                    <textarea 
-                      value={newComment}
-                      onChange={e => setNewComment(e.target.value)}
-                      placeholder="Laat een reactie achter..."
-                      className="w-full border-4 border-black p-4 text-sm font-bold focus:bg-yellow-50 outline-none shadow-[8px_8px_0_0_rgba(0,0,0,1)]"
-                    />
-                    <button type="submit" className="bg-black text-white py-3 font-black uppercase text-xs hover:bg-yellow-400 hover:text-black transition-all self-end px-10">Response_Versturen</button>
+                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="WRITE_YOUR_RESPONSE..." className="w-full border-4 border-black p-4 text-xs md:text-xl font-bold focus:bg-yellow-50 outline-none shadow-[6px_6px_0_0_rgba(0,0,0,1)]" />
+                    <button type="submit" className="bg-black text-white py-4 md:py-6 font-black uppercase text-xs md:text-xl hover:bg-yellow-300 hover:text-black transition-all shadow-[8px_8px_0_0_rgba(0,0,0,1)]">SEND_ENTRY</button>
                   </form>
                 ) : (
-                  <div className="p-4 border-4 border-dashed border-black flex justify-between items-center bg-gray-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest">Login om deel te nemen aan de dialoog_</p>
-                    <button onClick={login} className="bg-black text-white px-4 py-1 text-[10px] font-black hover:bg-yellow-400 hover:text-black">LOGIN_</button>
-                  </div>
+                  <button onClick={login} className="w-full border-4 border-dashed border-black p-6 md:p-10 text-[10px] md:text-xl font-black uppercase hover:bg-yellow-300 transition-colors">LOGIN_TO_RESPOND_</button>
                 )}
               </div>
             </div>
-
-            <footer className="mt-32 pt-12 border-t-8 border-black flex flex-col md:flex-row justify-between items-center text-[9px] font-black uppercase opacity-40 italic gap-4">
-              <span>Geverifieerd_Archief_Toegang</span>
-              <span>Exposure Therapy // Giel te Molder // 2026</span>
-            </footer>
           </div>
         </div>
       )}
