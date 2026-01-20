@@ -24,27 +24,36 @@ export default function App() {
   const haalPostsOp = async () => {
     setLoading(true);
     try {
-      // We sorteren ze op timestamp zodat de nieuwste bovenaan komen
+      // PROBEER TE SORTEREN: 
+      // Let op: Posts zonder 'timestamp' (handmatig toegevoegd) verschijnen hier NIET.
       const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
       const querySnapshot = await getDocs(q);
-      const opgehaaldeData = querySnapshot.docs.map(doc => ({
+      
+      let opgehaaldeData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setPosts(opgehaaldeData);
-    } catch (err) {
-      console.error("Database fout:", err);
-      // Fallback voor als de database nog geen 'timestamp' velden heeft of leeg is
-      try {
+
+      // FALLBACK: Als er minder posts zijn dan in de database staan (omdat sommige geen timestamp hebben),
+      // halen we gewoon alles op zonder sortering.
+      if (opgehaaldeData.length === 0) {
         const simpleSnapshot = await getDocs(collection(db, "posts"));
-        const simpleData = simpleSnapshot.docs.map(doc => ({
+        opgehaaldeData = simpleSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        setPosts(simpleData);
-      } catch (e) {
-        console.error("Zelfs simpele fetch faalde:", e);
       }
+
+      setPosts(opgehaaldeData);
+    } catch (err) {
+      console.error("Sorteerfout (waarschijnlijk index nodig):", err);
+      // Als sorteren mislukt (bijv. geen index), haal dan gewoon alles ongeordend op
+      const fallbackSnapshot = await getDocs(collection(db, "posts"));
+      const fallbackData = fallbackSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPosts(fallbackData);
     } finally {
       setLoading(false);
     }
@@ -58,10 +67,10 @@ export default function App() {
   const handleSavePost = async (e) => {
     e.preventDefault();
     try {
-      // Hier gebruiken we addDoc, die nu bovenaan correct is geïmporteerd
+      // addDoc is nu correct geïmporteerd bovenin
       await addDoc(collection(db, "posts"), {
         ...formData,
-        timestamp: serverTimestamp() // Voor de juiste volgorde
+        timestamp: serverTimestamp() // Dit zorgt voor de juiste volgorde in de toekomst
       });
       
       // Reset het formulier en ga terug naar het archief
