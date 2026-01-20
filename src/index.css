@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Jouw custom cursor en achtergrond */
+body {
+    background-color: #f3f3f3;
+    font-family: 'Courier New', Courier, monospace; 
+}
