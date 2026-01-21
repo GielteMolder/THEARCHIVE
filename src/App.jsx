@@ -28,7 +28,7 @@ export default function App() {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [view, setView] = useState('grid'); 
+  const [view, setView] = useState('grid'); // 'grid', 'admin'
   const [user, setUser] = useState(null);
   const [newComment, setNewComment] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -51,11 +51,30 @@ export default function App() {
     content: '',
     title: '',
     src: '',
-    audioSrc: '',
     tags: '',
     isTitle: false,
     date: new Date().toLocaleDateString('nl-NL'),
   });
+
+  // --- BROWSER NAVIGATION LOGIC ---
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // Als de gebruiker op 'terug' klikt, kijken we of er een view in de state staat
+      if (event.state && event.state.view) {
+        setView(event.state.view);
+      } else {
+        setView('grid');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (newView) => {
+    setView(newView);
+    // Voeg een nieuwe entry toe aan de browser history
+    window.history.pushState({ view: newView }, '', '');
+  };
 
   // Live klok update
   useEffect(() => {
@@ -86,7 +105,7 @@ export default function App() {
 
   const logout = () => {
     signOut(auth);
-    setView('grid');
+    navigateTo('grid');
     setShowAccountMenu(false);
   };
 
@@ -136,37 +155,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedPost, filteredPosts]);
 
-  // Swipe navigatie
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.targetTouches[0].clientX;
-  };
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-  const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) navigatePost(1);
-    if (isRightSwipe) navigatePost(-1);
-
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
-
-  // Comments ophalen
-  useEffect(() => {
-    if (!selectedPost) return;
-    const q = query(collection(db, "posts", selectedPost.id, "comments"), orderBy("timestamp", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setComments(data);
-    });
-    return () => unsubscribe();
-  }, [selectedPost]);
-
   const handleSavePost = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -178,8 +166,8 @@ export default function App() {
         likes: 0,
         likedBy: [] 
       });
-      setFormData({ type: 'blog', content: '', title: '', src: '', audioSrc: '', tags: '', isTitle: false, date: new Date().toLocaleDateString('nl-NL') });
-      setView('grid');
+      setFormData({ type: 'blog', content: '', title: '', src: '', tags: '', isTitle: false, date: new Date().toLocaleDateString('nl-NL') });
+      navigateTo('grid');
     } catch (err) { console.error(err); }
   };
 
@@ -217,25 +205,6 @@ export default function App() {
     try {
       const commentRef = doc(db, "posts", selectedPost.id, "comments", commentId);
       await updateDoc(commentRef, { likes: increment(1) });
-    } catch (err) { console.error(err); }
-  };
-
-  const handleShare = async (post) => {
-    try {
-      if (post.type === 'blog') {
-        await navigator.clipboard.writeText(post.content);
-        alert("Tekst gekopieerd!");
-      } else {
-        try {
-          const response = await fetch(post.src);
-          const blob = await response.blob();
-          await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-          alert("Beeld gekopieerd!");
-        } catch {
-          await navigator.clipboard.writeText(post.src);
-          alert("Link gekopieerd!");
-        }
-      }
     } catch (err) { console.error(err); }
   };
 
@@ -286,7 +255,6 @@ export default function App() {
               </p>
             </div>
 
-            {/* BUTTON GROUP WITH EQUAL HEIGHT */}
             <div className="flex flex-row gap-2 md:gap-4 items-stretch flex-shrink-0">
               <button 
                 onClick={() => setDarkMode(!darkMode)} 
@@ -297,7 +265,7 @@ export default function App() {
               
               {isAdmin && (
                 <button 
-                  onClick={() => setView('admin')} 
+                  onClick={() => navigateTo('admin')} 
                   className="bg-yellow-300 border-2 md:border-4 border-black px-2 md:px-6 py-1 md:py-3 text-[8px] md:text-xs font-black uppercase shadow-[2px_2px_0_0_rgba(0,0,0,1)] text-black transition-all hover:shadow-none flex items-center justify-center"
                 >
                   + NEW
@@ -323,14 +291,12 @@ export default function App() {
                     {user.photoURL && <img src={user.photoURL} className="w-5 h-5 md:w-8 md:h-8 grayscale border border-current" alt="u" />}
                   </button>
 
-                  {/* ACCOUNT DROPDOWN MENU */}
                   {showAccountMenu && (
                     <div className={`absolute right-0 mt-2 w-48 md:w-64 border-4 border-black p-4 md:p-6 z-50 shadow-[6px_6px_0_0_rgba(0,0,0,1)] flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200 ${darkMode ? 'bg-[#111] text-white' : 'bg-white text-black'}`}>
                       <div className="flex flex-col border-b-2 border-black/10 pb-3">
                         <span className="text-[8px] font-black uppercase opacity-40 mb-1 tracking-widest">Identity_</span>
                         <span className="text-[9px] md:text-[12px] font-bold truncate lowercase">{user.email}</span>
                       </div>
-                      
                       <button 
                         onClick={logout} 
                         className="w-full bg-red-500 text-white text-[10px] md:text-xs font-black uppercase py-2 md:py-3 border-2 md:border-black shadow-[3px_3px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-center"
@@ -364,39 +330,115 @@ export default function App() {
       {/* MAIN CONTENT AREA */}
       <div className="flex-grow flex flex-col">
         {view === 'admin' ? (
-          <div className="bg-[#f0f0f0] min-h-screen flex flex-col p-4 md:p-20 items-center text-black">
-            <div className="max-w-4xl w-full space-y-12">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white border-4 border-black p-4 shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col justify-between h-32">
-                  <span className="text-[10px] font-black uppercase opacity-40">ENTRIES_</span>
-                  <span className="text-4xl font-black italic tracking-tighter">{posts.length}</span>
+          <div className={`min-h-screen flex flex-col p-4 md:p-12 transition-colors duration-500 ${darkMode ? 'bg-black text-white' : 'bg-[#f0f0f0] text-black'}`}>
+            <div className="max-w-[1400px] mx-auto w-full flex flex-col gap-12">
+              
+              {/* STATUS BAR */}
+              <div className="flex justify-between items-center border-b-8 border-black pb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse border-2 border-black"></div>
+                  <h2 className="text-3xl md:text-6xl font-black italic tracking-tighter uppercase font-mono">Input_Terminal</h2>
                 </div>
-                <div className="bg-white border-4 border-black p-4 shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col justify-between h-32">
-                  <span className="text-[10px] font-black uppercase opacity-40">IMPACT_</span>
-                  <span className="text-4xl font-black italic tracking-tighter text-pink-400">
-                    {posts.reduce((acc, curr) => acc + (curr.likes || 0), 0)}
-                  </span>
-                </div>
+                <button 
+                  onClick={() => navigateTo('grid')} 
+                  className="bg-black text-white px-6 py-2 font-black uppercase border-4 border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                >
+                  Back_
+                </button>
               </div>
 
-              <div className="bg-white border-4 md:border-[10px] border-black p-6 md:p-10 shadow-[20px_20px_0_0_rgba(0,0,0,1)]">
-                <div className="flex justify-between items-center border-b-4 border-black pb-4 mb-8">
-                  <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-300 underline-offset-4 font-mono">Input_Terminal</h2>
-                  <button onClick={() => setView('grid')} className="text-[10px] font-black bg-black text-white px-4 py-2 border-2 border-black">X</button>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                {/* FORM SECTION */}
+                <div className={`border-4 md:border-8 border-black p-6 md:p-10 shadow-[15px_15px_0_0_rgba(0,0,0,1)] ${darkMode ? 'bg-[#111]' : 'bg-white'}`}>
+                  <form onSubmit={handleSavePost} className="space-y-8 font-mono">
+                    <div className="flex border-4 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)]">
+                      <button type="button" onClick={() => setFormData({...formData, type: 'blog'})} className={`flex-1 py-4 font-black uppercase transition-colors ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white text-black'}`}>Text_Entry</button>
+                      <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-4 font-black uppercase transition-colors ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white text-black'}`}>Visual_Entry</button>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase opacity-40 italic">Entry_Title_</label>
+                        <input type="text" placeholder="REQUIRED_FIELD" className={`w-full bg-transparent border-b-4 border-black p-2 text-xl font-black outline-none placeholder:opacity-20 ${darkMode ? 'text-white border-white' : 'text-black'}`} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required />
+                      </div>
+
+                      {formData.type === 'art' && (
+                        <div className="space-y-2 animate-in fade-in duration-300">
+                          <label className="text-[10px] font-black uppercase opacity-40 italic">Asset_Source_URL_</label>
+                          <input type="text" placeholder="HTTPS://..." className={`w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none placeholder:opacity-20 ${darkMode ? 'text-white border-white' : 'text-black'}`} value={formData.src} onChange={e => setFormData({...formData, src: e.target.value})} required={formData.type === 'art'} />
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase opacity-40 italic">Metadata_Tags_</label>
+                        <input type="text" placeholder="#RAW, #ANALOG, #PROCESS..." className={`w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none placeholder:opacity-20 ${darkMode ? 'text-white border-white' : 'text-black'}`} value={formData.tags} onChange={e => setFormData({...formData, tags: e.target.value})} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase opacity-40 italic">Body_Content_</label>
+                        <textarea className={`w-full border-4 border-black p-4 h-64 text-xl font-bold outline-none focus:bg-yellow-50 focus:text-black resize-none transition-colors ${darkMode ? 'bg-black text-white border-white' : 'bg-white text-black'}`} placeholder="BEGIN TRANSMISSION..." value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} required />
+                      </div>
+
+                      <div className="flex items-center gap-4 py-4 border-t-2 border-black/10">
+                        <input type="checkbox" id="isTitle" className="w-6 h-6 border-4 border-black accent-black" checked={formData.isTitle} onChange={e => setFormData({...formData, isTitle: e.target.checked})} />
+                        <label htmlFor="isTitle" className="text-xs font-black uppercase">Display as Manifesto (Title Card)</label>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="w-full bg-black text-white py-6 font-black text-3xl uppercase italic tracking-tighter hover:bg-yellow-300 hover:text-black transition-all shadow-[10px_10px_0_0_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1">PUSH_TO_ARCHIVE_</button>
+                  </form>
                 </div>
-                <form onSubmit={handleSavePost} className="space-y-8 font-mono text-black">
-                  <div className="flex border-4 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)]">
-                    <button type="button" onClick={() => setFormData({...formData, type: 'blog'})} className={`flex-1 py-4 font-black uppercase ${formData.type === 'blog' ? 'bg-black text-white' : 'bg-white'}`}>Text</button>
-                    <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-4 font-black uppercase ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white'}`}>Visual</button>
+
+                {/* LIVE PREVIEW SECTION */}
+                <div className="flex flex-col gap-6">
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-black uppercase opacity-40 tracking-widest italic">Live_Monitor_</span>
+                    <div className="flex-grow h-[1px] bg-black/10"></div>
                   </div>
-                  <div className="space-y-4">
-                    <input type="text" placeholder="TITLE" className="w-full bg-transparent border-b-4 border-black p-2 text-xl font-black outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                    {formData.type === 'art' && <input type="text" placeholder="IMAGE_URL" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.src} onChange={e => setFormData({...formData, src: e.target.value})} />}
-                    <input type="text" placeholder="TAGS (comma separated, e.g. #raw, #analog)" className="w-full bg-transparent border-b-4 border-black p-2 text-lg font-black outline-none" value={formData.tags} onChange={e => setFormData({...formData, tags: e.target.value})} />
-                    <textarea className="w-full bg-white border-4 border-black p-4 h-64 text-xl font-bold outline-none focus:bg-yellow-50 resize-none" placeholder="CONTENT..." value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
+                  
+                  <div className="sticky top-24">
+                    <div className="scale-90 md:scale-100 origin-top">
+                      <div className={`border-4 border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] relative transition-all ${formData.type === 'art' ? 'bg-black p-0.5' : 'p-8'} ${formData.isTitle ? 'bg-white border-l-[15px]' : formData.type === 'blog' ? 'bg-yellow-300' : ''}`}>
+                        {formData.type === 'blog' ? (
+                          <div className="space-y-2 text-black">
+                            <p className={`font-black uppercase tracking-tighter leading-tight ${formData.isTitle ? 'text-3xl italic' : 'text-[12px]'}`}>
+                              {formData.isTitle ? `"${formData.content || 'MANIFIESTO'}"` : (formData.content || 'Your content will appear here...')}
+                            </p>
+                            <div className="flex justify-between items-end pt-2">
+                              <div className="bg-pink-200 border border-black px-1 text-[10px] font-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] flex items-center gap-1">
+                                <svg className="w-2 h-2 text-red-500 fill-current" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                                0
+                              </div>
+                              <span className="text-[9px] font-black opacity-30 italic">{formData.date}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative overflow-hidden aspect-square bg-[#222]">
+                            {formData.src ? (
+                              <img src={formData.src} alt="Preview" className="w-full h-full object-cover grayscale" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px] font-black uppercase">Waiting_for_Asset_</div>
+                            )}
+                            <div className="absolute top-2 left-2 bg-white text-black border-2 border-black px-2 py-0.5 text-[9px] font-black uppercase italic shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
+                              {formData.title || 'Untitled'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-12 space-y-4">
+                      <div className={`p-4 border-2 border-black font-mono text-[10px] uppercase leading-relaxed ${darkMode ? 'bg-white/5 text-white/50' : 'bg-black/5 text-black/40'}`}>
+                        <p>// SYSTEM_REPORT:</p>
+                        {/* FIX: Escape > character as {'>'} or use &gt; */}
+                        <p>{'>'} AUTH_STATUS: {user?.displayName}</p>
+                        <p>{'>'} NODE: default-node</p>
+                        <p>{'>'} TIMESTAMP: {currentTime.toISOString()}</p>
+                        <p>{'>'} READY_FOR_PUSH: {formData.title && formData.content ? 'TRUE' : 'FALSE'}</p>
+                      </div>
+                    </div>
                   </div>
-                  <button type="submit" className="w-full bg-black text-white py-6 font-black text-3xl uppercase italic tracking-tighter hover:bg-yellow-300 transition-all shadow-[10px_10px_0_0_rgba(0,0,0,1)]">PUSH_</button>
-                </form>
+                </div>
               </div>
             </div>
           </div>
@@ -423,8 +465,8 @@ export default function App() {
                           {post.isTitle ? `"${post.content}"` : post.content}
                         </p>
                       )}
-                      <div className="flex justify-between items-end pt-2">
-                        <button onClick={(e) => handleLike(e, post.id)} className={`flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black px-1 transition-all ${post.likedBy?.includes(user?.uid) ? 'bg-pink-300 text-black shadow-none translate-x-0.5 translate-y-0.5' : 'bg-pink-200 hover:bg-pink-300 text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]'}`}>
+                      <div className="flex justify-between items-end pt-2 text-black">
+                        <button onClick={(e) => handleLike(e, post.id)} className={`flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black px-1 transition-all ${post.likedBy?.includes(user?.uid) ? 'bg-pink-300 shadow-none translate-x-0.5 translate-y-0.5' : 'bg-pink-200 hover:bg-pink-300 shadow-[2px_2px_0_0_rgba(0,0,0,1)]'}`}>
                           <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-red-600' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                           {post.likes || 0}
                         </button>
@@ -473,9 +515,16 @@ export default function App() {
         <div 
           className="fixed inset-0 bg-black/98 z-50 flex items-center justify-center p-2 md:p-12 backdrop-blur-2xl animate-in fade-in duration-300" 
           onClick={() => setSelectedPost(null)}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          onTouchStart={(e) => { touchStartX.current = e.targetTouches[0].clientX; }}
+          onTouchMove={(e) => { touchEndX.current = e.targetTouches[0].clientX; }}
+          onTouchEnd={() => {
+            if (!touchStartX.current || !touchEndX.current) return;
+            const distance = touchStartX.current - touchEndX.current;
+            if (distance > 50) navigatePost(1);
+            if (distance < -50) navigatePost(-1);
+            touchStartX.current = null;
+            touchEndX.current = null;
+          }}
         >
           <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto border-4 md:border-[10px] border-black p-6 md:p-12 relative shadow-[20px_20px_0_0_rgba(0,0,0,1)] font-mono ${darkMode ? 'bg-[#111] text-white shadow-white/5' : 'bg-white text-black'}`} onClick={e => e.stopPropagation()}>
             <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-10 border-b-4 md:border-b-8 border-black pb-8">
@@ -490,7 +539,10 @@ export default function App() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 flex-shrink-0">
-                <button onClick={() => handleShare(selectedPost)} className="bg-sky-200 text-black px-4 py-2 font-black text-xs border-2 border-black hover:bg-sky-300 transition-all shadow-[3px_3px_0_0_rgba(0,0,0,1)]">SHARE</button>
+                <button onClick={() => {
+                  navigator.clipboard.writeText(selectedPost.type === 'blog' ? selectedPost.content : selectedPost.src);
+                  alert("Copied to clipboard!");
+                }} className="bg-sky-200 text-black px-4 py-2 font-black text-xs border-2 border-black hover:bg-sky-300 transition-all shadow-[3px_3px_0_0_rgba(0,0,0,1)]">SHARE</button>
                 <button onClick={() => handleLike(null, selectedPost.id)} className={`px-4 py-2 border-2 border-black font-black flex items-center gap-2 transition-all ${selectedPost.likedBy?.includes(user?.uid) ? 'bg-pink-300 text-black shadow-none' : 'bg-pink-200 text-black hover:bg-pink-300 shadow-[3px_3px_0_0_rgba(0,0,0,1)]'}`}>
                   <svg className={`w-4 h-4 ${selectedPost.likedBy?.includes(user?.uid) ? 'text-red-600' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                   {selectedPost.likes || 0}
