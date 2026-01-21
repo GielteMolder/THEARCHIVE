@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, 
-  doc, updateDoc, deleteDoc, increment, arrayUnion 
+  doc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove 
 } from "firebase/firestore";
 import { 
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
@@ -128,27 +128,33 @@ export default function App() {
   const handleLike = async (e, id) => {
     if (e) e.stopPropagation();
     if (!user) {
-      alert("Log in om te liken.");
+      alert("Log in om te waarderen.");
       return;
     }
     
     const post = posts.find(p => p.id === id);
     if (!post) return;
     
-    if (post.likedBy && post.likedBy.includes(user.uid)) return;
+    const isLiked = post.likedBy && post.likedBy.includes(user.uid);
 
     try {
       const postRef = doc(db, "posts", id);
       await updateDoc(postRef, { 
-        likes: increment(1),
-        likedBy: arrayUnion(user.uid)
+        likes: increment(isLiked ? -1 : 1),
+        likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid)
       });
       
+      // Update local state voor de modal als die open staat
       if (selectedPost && selectedPost.id === id) {
+        const newLikes = (selectedPost.likes || 0) + (isLiked ? -1 : 1);
+        const newLikedBy = isLiked 
+          ? selectedPost.likedBy.filter(uid => uid !== user.uid)
+          : [...(selectedPost.likedBy || []), user.uid];
+          
         setSelectedPost({
           ...selectedPost,
-          likes: (selectedPost.likes || 0) + 1,
-          likedBy: [...(selectedPost.likedBy || []), user.uid]
+          likes: newLikes,
+          likedBy: newLikedBy
         });
       }
     } catch (err) { console.error(err); }
@@ -207,7 +213,6 @@ export default function App() {
       {/* HEADER: Zichtbaar in grid view */}
       {view === 'grid' && (
         <header className="p-4 md:p-10 border-b-8 border-black bg-white sticky top-0 z-40 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
-          {/* Flex-row houdt alles op één lijn op mobiel */}
           <div className="flex flex-row justify-between items-center gap-2">
             <div 
               className="group cursor-pointer select-none flex-grow"
@@ -231,12 +236,12 @@ export default function App() {
                 </button>
               )}
               {!user ? (
-                <button onClick={login} className="border-2 md:border-4 border-black px-2 md:px-6 py-1 md:py-3 text-[8px] md:text-xs font-black uppercase shadow-[2px_2px_0_0_rgba(0,0,0,1)]">LOGIN</button>
+                <button onClick={login} className="border-2 md:border-4 border-black px-2 md:px-6 py-1 md:py-3 text-[8px] md:text-xs font-black uppercase shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:bg-yellow-300">LOGIN</button>
               ) : (
                 <div className="flex items-center gap-2 md:gap-4 bg-black text-white p-1 md:p-2 pr-2 md:pr-6 border-2 md:border-4 border-black">
                   <div className="flex flex-col items-end">
                     <span className="text-[7px] md:text-[10px] font-black uppercase tracking-widest leading-none">
-                      {user.displayName?.split(' ')[0] || 'User'}
+                      {user.displayName?.split(' ')[0] || 'Member'}
                     </span>
                     <button onClick={logout} className="text-[6px] md:text-[8px] font-black underline uppercase opacity-50 hover:opacity-100 transition-all">
                       Out_
@@ -266,7 +271,7 @@ export default function App() {
                   <button 
                     key={f}
                     onClick={() => setActiveFilter(f)}
-                    className={`border-2 md:border-4 border-black px-3 py-1 md:px-4 md:py-2 transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] md:shadow-[4px_4px_0_0_rgba(0,0,0,1)] active:shadow-none ${activeFilter === f ? 'bg-black text-white' : 'bg-white'}`}
+                    className={`border-2 md:border-4 border-black px-3 py-1 md:px-4 md:py-2 transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] md:shadow-[4px_4px_0_0_rgba(0,0,0,1)] active:shadow-none ${activeFilter === f ? 'bg-black text-white' : 'bg-white hover:bg-yellow-300'}`}
                   >
                     {f === 'all' ? 'Everything' : f === 'blog' ? 'Text' : 'Visual'}
                   </button>
@@ -278,9 +283,9 @@ export default function App() {
       )}
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-grow">
+      <div className="flex-grow flex flex-col">
         {view === 'admin' ? (
-          <div className="bg-[#f0f0f0] min-h-[80vh] flex flex-col p-4 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-500">
+          <div className="bg-[#f0f0f0] flex-grow flex flex-col p-4 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-500">
             <div className="max-w-3xl mx-auto w-full space-y-8 bg-white border-4 md:border-[10px] border-black p-6 md:p-10 shadow-[10px_10px_0_0_rgba(0,0,0,1)]">
               <div className="flex justify-between items-center border-b-4 border-black pb-4">
                 <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-300 underline-offset-4 font-mono">Input_Terminal</h2>
@@ -311,7 +316,7 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <main className="p-4 md:p-12 mb-10 block">
+          <main className="p-4 md:p-12 mb-10 block flex-grow">
             <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-8 max-w-[1700px] mx-auto space-y-4 md:space-y-8">
               {filteredPosts.map((post) => (
                 <div 
@@ -341,7 +346,7 @@ export default function App() {
                       <div className="flex justify-between items-end">
                         <button 
                           onClick={(e) => handleLike(e, post.id)}
-                          className={`flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black/20 px-1 transition-colors ${post.likedBy?.includes(user?.uid) ? 'bg-black text-white' : 'hover:bg-white'}`}
+                          className={`flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black/20 px-1 transition-colors ${post.likedBy?.includes(user?.uid) ? 'bg-black text-white shadow-none' : 'bg-white hover:bg-gray-100 shadow-[1px_1px_0_0_rgba(0,0,0,1)]'}`}
                         >
                           <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-white' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                           {post.likes || 0}
