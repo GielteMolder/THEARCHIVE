@@ -335,7 +335,7 @@ export default function App() {
                       <button type="button" onClick={() => setFormData({...formData, type: 'art'})} className={`flex-1 py-4 font-black uppercase ${formData.type === 'art' ? 'bg-black text-white' : 'bg-white text-black'}`}>Visual_Entry</button>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-6 text-black">
                       <input type="text" placeholder="ENTRY_TITLE_" className={`w-full bg-transparent border-b-4 border-black p-2 text-xl font-black outline-none ${darkMode ? 'text-white border-white' : 'text-black'}`} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required />
                       
                       {formData.type === 'art' && (
@@ -359,7 +359,7 @@ export default function App() {
                 <div className="hidden lg:block space-y-6">
                   <span className="text-xs font-black uppercase opacity-40 italic tracking-widest">Live_Monitor_</span>
                   <div className={`border-4 border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-8 ${formData.type === 'blog' ? 'bg-yellow-300' : 'bg-black'} text-black`}>
-                    <p className="font-black uppercase tracking-tighter text-lg leading-tight">{formData.title || 'Entry_Preview'}</p>
+                    <p className="font-black tracking-tighter text-lg leading-tight">{formData.title || 'Entry_Preview'}</p>
                     <p className="text-[10px] mt-2 opacity-50">{formData.content.substring(0, 100)}...</p>
                     {formData.audioSrc && <div className="mt-4 bg-white border border-black p-1 text-[8px] font-black uppercase italic">🔊 AUDIO_ATTACHED</div>}
                   </div>
@@ -396,7 +396,6 @@ export default function App() {
                  </div>
 
                  <div className="md:col-span-2 space-y-12">
-                    {/* Signal Collection Section */}
                     <div className="space-y-6">
                       <h3 className="text-2xl font-black uppercase italic underline decoration-yellow-300 decoration-8 underline-offset-4">Signal_Collection_</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -408,7 +407,7 @@ export default function App() {
                               <img src={post.src} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" alt="art" />
                             ) : (
                               <div className="p-4 flex flex-col justify-center h-full bg-yellow-300">
-                                <p className="text-[8px] font-black line-clamp-3 uppercase text-black">{post.content}</p>
+                                <p className="text-[8px] font-black line-clamp-3 text-black">{post.content}</p>
                               </div>
                             )}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
@@ -419,7 +418,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Recent Responses Section */}
                     <div className="space-y-6">
                       <h3 className="text-2xl font-black uppercase italic underline decoration-pink-300 decoration-8 underline-offset-4">Recent_Responses_</h3>
                       <div className="space-y-4">
@@ -451,7 +449,7 @@ export default function App() {
                   )}
                   {post.type === 'blog' ? (
                     <div className="space-y-2 text-black">
-                      <p className={`font-black uppercase tracking-tighter leading-tight ${post.isTitle ? 'text-lg md:text-3xl italic' : 'text-[9px] md:text-[12px] line-clamp-[10]'}`}>
+                      <p className={`font-black tracking-tighter leading-tight ${post.isTitle ? 'text-lg md:text-3xl italic' : 'text-[9px] md:text-[12px] line-clamp-[10]'}`}>
                         {post.isTitle ? `"${post.content}"` : post.content}
                       </p>
                       <div className="flex justify-between items-end pt-2 text-black">
@@ -517,7 +515,6 @@ export default function App() {
             </div>
 
             <div className="space-y-12 text-black">
-              {/* FIX: Removed grayscale class here to show images in full color in modal */}
               {selectedPost.type === 'art' && <img src={selectedPost.src} className="w-full h-auto border-4 border-black" alt="Art" />}
               {selectedPost.audioSrc && (
                 <div className="p-4 border-4 border-black bg-white shadow-[8px_8px_0_0_rgba(0,0,0,1)] space-y-2">
@@ -525,7 +522,7 @@ export default function App() {
                   <audio controls className="w-full" src={selectedPost.audioSrc}></audio>
                 </div>
               )}
-              <div className={`text-xl md:text-3xl font-black whitespace-pre-wrap uppercase ${darkMode ? 'text-white' : 'text-black'}`}>{selectedPost.content}</div>
+              <div className={`text-xl md:text-3xl font-black whitespace-pre-wrap text-justify tracking-tighter selection:bg-yellow-300 ${darkMode ? 'text-white' : 'text-black'}`}>{selectedPost.content}</div>
 
               {/* RESPONSES SECTION */}
               <div className="mt-20 border-t-8 border-black pt-12 text-black">
@@ -543,7 +540,7 @@ export default function App() {
                               {c.likes || 0}
                             </button>
                           </div>
-                          <p className={`text-sm md:text-xl font-bold uppercase ${darkMode ? 'text-white' : 'text-black'}`}>{c.text}</p>
+                          <p className={`text-sm md:text-xl font-bold tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-black'}`}>{c.text}</p>
                         </div>
                       </div>
                     ))
