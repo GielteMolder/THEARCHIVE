@@ -423,14 +423,9 @@ export default function App() {
                     <div className="space-y-6">
                       <h3 className="text-2xl font-black uppercase italic underline decoration-pink-300 decoration-8 underline-offset-4">Recent_Responses_</h3>
                       <div className="space-y-4">
-                        {/* We filteren comments die de user heeft geplaatst uit alle geladen posts (simpele aanpak) */}
                         {posts.some(p => true) ? (
                           <p className="text-[10px] font-black opacity-30 italic uppercase border-t border-black/10 pt-4">This section monitors your latest interactions across the archive.</p>
                         ) : null}
-                        {/* Let op: In een grote database zou je een aparte collection 'user_activity' bijhouden. 
-                          Voor nu tonen we de structuur; om alle comments van één user overal vandaan te halen zonder complexe queries
-                          is lastig in Firestore. Op de accountpagina tonen we nu de status en de likes collectie.
-                        */}
                         <div className="p-4 border-2 border-dashed border-black/20">
                            <p className="text-[10px] font-bold uppercase opacity-40">User Response Stream initialized...</p>
                         </div>
@@ -522,7 +517,8 @@ export default function App() {
             </div>
 
             <div className="space-y-12 text-black">
-              {selectedPost.type === 'art' && <img src={selectedPost.src} className="w-full h-auto grayscale border-4 border-black" alt="Art" />}
+              {/* FIX: Removed grayscale class here to show images in full color in modal */}
+              {selectedPost.type === 'art' && <img src={selectedPost.src} className="w-full h-auto border-4 border-black" alt="Art" />}
               {selectedPost.audioSrc && (
                 <div className="p-4 border-4 border-black bg-white shadow-[8px_8px_0_0_rgba(0,0,0,1)] space-y-2">
                   <p className="text-[10px] font-black uppercase italic tracking-widest text-black">// ATTACHED_AUDIO_STREAM_</p>
