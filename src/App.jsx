@@ -176,11 +176,19 @@ export default function App() {
     } catch (err) { console.error(err); }
   };
 
+  // FIX: Verwijder de oneindige likes op comments
   const handleCommentLike = async (commentId) => {
-    if (!user || !selectedPost) return;
+    if (!user || !selectedPost) { alert("Log in om te waarderen."); return; }
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+    
+    const isLiked = comment.likedBy && comment.likedBy.includes(user.uid);
     try {
       const commentRef = doc(db, "posts", selectedPost.id, "comments", commentId);
-      await updateDoc(commentRef, { likes: increment(1) });
+      await updateDoc(commentRef, { 
+        likes: increment(isLiked ? -1 : 1),
+        likedBy: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid)
+      });
     } catch (err) { console.error(err); }
   };
 
@@ -195,6 +203,7 @@ export default function App() {
         userUid: user.uid,
         timestamp: serverTimestamp(),
         likes: 0,
+        likedBy: [], // Initialiseer likedBy array
         isAdmin: user.email.toLowerCase() === "gielmolder@gmail.com"
       });
       setNewComment("");
@@ -504,8 +513,8 @@ export default function App() {
                         <div className="flex-grow">
                           <div className="flex justify-between items-start mb-2 uppercase opacity-50 text-[10px] font-black">
                             <span>{c.userName} // {c.isAdmin ? 'ADMIN' : 'USER'}</span>
-                            <button onClick={() => handleCommentLike(c.id)} className="border border-black/20 px-2 flex items-center gap-1 hover:bg-pink-100 transition-colors">
-                              <svg className="w-2 h-2 text-red-500 fill-current" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                            <button onClick={() => handleCommentLike(c.id)} className={`border px-2 flex items-center gap-1 transition-all ${c.likedBy?.includes(user?.uid) ? 'bg-pink-300 border-black shadow-none translate-x-0.5 translate-y-0.5' : 'bg-white border-black/20 hover:bg-pink-100'}`}>
+                              <svg className={`w-2 h-2 ${c.likedBy?.includes(user?.uid) ? 'text-red-600' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                               {c.likes || 0}
                             </button>
                           </div>
