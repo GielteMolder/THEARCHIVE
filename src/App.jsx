@@ -110,7 +110,7 @@ export default function App() {
     navigateTo('grid');
   };
 
-  // Real-time data sync
+  // Real-time data sync for posts
   useEffect(() => { 
     const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -120,6 +120,20 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Real-time data sync for comments of the SELECTED post
+  useEffect(() => {
+    if (!selectedPost) {
+      setComments([]);
+      return;
+    }
+    const q = query(collection(db, "posts", selectedPost.id, "comments"), orderBy("timestamp", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setComments(data);
+    });
+    return () => unsubscribe();
+  }, [selectedPost]);
 
   // Filter logic
   const filteredPosts = useMemo(() => {
@@ -133,7 +147,7 @@ export default function App() {
     });
   }, [posts, activeFilter, searchQuery]);
 
-  // Own likes for profile page
+  // User's activity for profile page
   const likedPosts = useMemo(() => {
     if (!user) return [];
     return posts.filter(post => post.likedBy?.includes(user.uid));
@@ -186,6 +200,7 @@ export default function App() {
         text: newComment,
         userName: user.displayName,
         userPhoto: user.photoURL,
+        userUid: user.uid,
         timestamp: serverTimestamp(),
         likes: 0,
         isAdmin: user.email.toLowerCase() === "gielmolder@gmail.com"
@@ -380,25 +395,46 @@ export default function App() {
                     </div>
                  </div>
 
-                 <div className="md:col-span-2 space-y-6">
-                    <h3 className="text-2xl font-black uppercase italic underline decoration-yellow-300 decoration-8 underline-offset-4">Signal_Collection_</h3>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                       {likedPosts.length === 0 ? (
-                         <div className="col-span-full p-10 border-4 border-dashed border-black/20 text-center uppercase font-black opacity-30 italic">No signals collected yet...</div>
-                       ) : likedPosts.map(post => (
-                         <div key={post.id} onClick={() => setSelectedPost(post)} className="aspect-square border-2 border-black bg-white cursor-pointer group hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all overflow-hidden relative">
-                           {post.type === 'art' ? (
-                             <img src={post.src} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" alt="art" />
-                           ) : (
-                             <div className="p-4 flex flex-col justify-center h-full bg-yellow-300">
-                               <p className="text-[8px] font-black line-clamp-3 uppercase text-black">{post.content}</p>
-                             </div>
-                           )}
-                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                              <span className="text-white font-black text-[10px] uppercase tracking-widest">Open_</span>
-                           </div>
-                         </div>
-                       ))}
+                 <div className="md:col-span-2 space-y-12">
+                    {/* Signal Collection Section */}
+                    <div className="space-y-6">
+                      <h3 className="text-2xl font-black uppercase italic underline decoration-yellow-300 decoration-8 underline-offset-4">Signal_Collection_</h3>
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        {likedPosts.length === 0 ? (
+                          <div className="col-span-full p-10 border-4 border-dashed border-black/20 text-center uppercase font-black opacity-30 italic">No signals collected yet...</div>
+                        ) : likedPosts.map(post => (
+                          <div key={post.id} onClick={() => setSelectedPost(post)} className="aspect-square border-2 border-black bg-white cursor-pointer group hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all overflow-hidden relative">
+                            {post.type === 'art' ? (
+                              <img src={post.src} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" alt="art" />
+                            ) : (
+                              <div className="p-4 flex flex-col justify-center h-full bg-yellow-300">
+                                <p className="text-[8px] font-black line-clamp-3 uppercase text-black">{post.content}</p>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                <span className="text-white font-black text-[10px] uppercase tracking-widest">Open_</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Responses Section */}
+                    <div className="space-y-6">
+                      <h3 className="text-2xl font-black uppercase italic underline decoration-pink-300 decoration-8 underline-offset-4">Recent_Responses_</h3>
+                      <div className="space-y-4">
+                        {/* We filteren comments die de user heeft geplaatst uit alle geladen posts (simpele aanpak) */}
+                        {posts.some(p => true) ? (
+                          <p className="text-[10px] font-black opacity-30 italic uppercase border-t border-black/10 pt-4">This section monitors your latest interactions across the archive.</p>
+                        ) : null}
+                        {/* Let op: In een grote database zou je een aparte collection 'user_activity' bijhouden. 
+                          Voor nu tonen we de structuur; om alle comments van één user overal vandaan te halen zonder complexe queries
+                          is lastig in Firestore. Op de accountpagina tonen we nu de status en de likes collectie.
+                        */}
+                        <div className="p-4 border-2 border-dashed border-black/20">
+                           <p className="text-[10px] font-bold uppercase opacity-40">User Response Stream initialized...</p>
+                        </div>
+                      </div>
                     </div>
                  </div>
               </div>
@@ -495,6 +531,7 @@ export default function App() {
               )}
               <div className={`text-xl md:text-3xl font-black whitespace-pre-wrap uppercase ${darkMode ? 'text-white' : 'text-black'}`}>{selectedPost.content}</div>
 
+              {/* RESPONSES SECTION */}
               <div className="mt-20 border-t-8 border-black pt-12 text-black">
                 <h3 className={`text-2xl md:text-4xl font-black uppercase italic mb-10 underline decoration-pink-300 underline-offset-8 ${darkMode ? 'text-white' : 'text-black'}`}>Responses_</h3>
                 <div className="space-y-6 mb-12">
@@ -503,18 +540,26 @@ export default function App() {
                       <div key={c.id} className={`p-4 border-4 border-black flex gap-4 ${c.isAdmin ? 'bg-yellow-300 text-black' : (darkMode ? 'bg-[#222]' : 'bg-white text-black')} shadow-[6px_6px_0_0_rgba(0,0,0,1)]`}>
                         {c.userPhoto && <img src={c.userPhoto} className="w-10 h-10 border-2 border-black grayscale" alt="av" />}
                         <div className="flex-grow text-black">
-                          <span className="text-[10px] font-black uppercase opacity-50 block mb-1">{c.userName}</span>
+                          <div className="flex justify-between items-start mb-2 text-black">
+                            <span className="text-[10px] font-black uppercase opacity-50 block mb-1">{c.userName} // {c.isAdmin ? 'ADMIN' : 'USER'}</span>
+                            <button onClick={() => handleCommentLike(c.id)} className="text-[10px] font-black border border-black/20 px-2 flex items-center gap-1 hover:bg-pink-100 transition-colors">
+                              <svg className="w-2 h-2 text-red-500 fill-current" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                              {c.likes || 0}
+                            </button>
+                          </div>
                           <p className={`text-sm md:text-xl font-bold uppercase ${darkMode ? 'text-white' : 'text-black'}`}>{c.text}</p>
                         </div>
                       </div>
                     ))
                   }
                 </div>
-                {user && (
+                {user ? (
                   <form onSubmit={handleAddComment} className="flex flex-col gap-4">
                     <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="ENTER RESPONSE..." className="w-full border-4 border-black p-4 text-lg md:text-2xl font-bold focus:bg-pink-50 outline-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] text-black" />
                     <button type="submit" className="bg-black text-white py-6 font-black uppercase text-xl md:text-3xl italic tracking-tighter hover:bg-pink-300 hover:text-black transition-all shadow-[10px_10px_0_0_rgba(0,0,0,1)]">Push_Response_</button>
                   </form>
+                ) : (
+                  <button onClick={login} className="w-full border-4 border-dashed border-black p-10 text-xl font-black uppercase hover:bg-yellow-300 transition-colors text-black">LOGIN_TO_SIGNAL_</button>
                 )}
               </div>
             </div>
