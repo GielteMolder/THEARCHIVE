@@ -8,7 +8,7 @@ import {
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
 } from "firebase/auth";
 
-// --- CONFIGURATIE ---
+// --- CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyCQyGS486-RohBd3FHBQENIhH0PSkInwBs",
   authDomain: "expothearchive.firebaseapp.com",
@@ -22,6 +22,7 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
 const provider = new GoogleAuthProvider();
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'expothearchive-node-01';
 
 export default function App() {
   const [posts, setPosts] = useState([]);
@@ -77,7 +78,7 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  // Live klok
+  // Live clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -89,7 +90,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Click outside menu
+  // Click outside menu listener
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
@@ -109,7 +110,7 @@ export default function App() {
     navigateTo('grid');
   };
 
-  // Real-time data
+  // Real-time data sync
   useEffect(() => { 
     const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -120,7 +121,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Filteren
+  // Filter logic
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
       const matchesFilter = activeFilter === 'all' || post.type === activeFilter;
@@ -132,7 +133,7 @@ export default function App() {
     });
   }, [posts, activeFilter, searchQuery]);
 
-  // Eigen likes voor account pagina
+  // Own likes for profile page
   const likedPosts = useMemo(() => {
     if (!user) return [];
     return posts.filter(post => post.likedBy?.includes(user.uid));
@@ -193,6 +194,20 @@ export default function App() {
     } catch (err) { console.error(err); }
   };
 
+  const handleDeletePost = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Permanent verwijderen?")) return;
+    try { await deleteDoc(doc(db, "posts", id)); } catch (err) { console.error(err); }
+  };
+
+  const handleQuickEdit = async (e, id, newContent) => {
+    e.stopPropagation();
+    try {
+      await updateDoc(doc(db, "posts", id), { content: newContent });
+      setEditingPostId(null);
+    } catch (err) { console.error(err); }
+  };
+
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -207,7 +222,7 @@ export default function App() {
 
   const isAdmin = user && user.email && user.email.toLowerCase() === "gielmolder@gmail.com";
 
-  // Bepaal de titel van de header op basis van de view
+  // Dynamic Header Title
   const headerTitle = useMemo(() => {
     if (view === 'admin') return 'TERMINAL_INPUT';
     if (view === 'account') return 'THE_IDENTITY';
@@ -217,7 +232,7 @@ export default function App() {
   return (
     <div className={`min-h-screen font-mono selection:bg-pink-200 selection:text-black flex flex-col transition-colors duration-500 ${darkMode ? 'bg-black text-white' : 'bg-[#f0f0f0] text-[#1a1a1a]'}`}>
       
-      {/* GLOBAL HEADER (Dynamisch) */}
+      {/* GLOBAL HEADER */}
       <header className={`p-4 md:p-10 border-b-8 border-black sticky top-0 z-40 shadow-[0_4px_0_0_rgba(0,0,0,1)] transition-colors ${darkMode ? 'bg-[#111]' : 'bg-white'}`}>
         <div className="flex flex-row justify-between items-center gap-2">
           <div className="group cursor-pointer select-none flex-grow" onClick={() => view === 'grid' ? setShowFilters(!showFilters) : navigateTo('grid')}>
@@ -230,7 +245,6 @@ export default function App() {
           </div>
 
           <div className="flex flex-row gap-2 md:gap-4 items-stretch flex-shrink-0">
-            {/* Terug naar Grid knop (alleen zichtbaar buiten de grid) */}
             {view !== 'grid' && (
               <button 
                 onClick={() => navigateTo('grid')}
@@ -319,7 +333,7 @@ export default function App() {
 
                       <div className="flex items-center gap-4 py-4 border-t-2 border-black/10">
                         <input type="checkbox" id="isTitle" className="w-6 h-6 border-4 border-black accent-black" checked={formData.isTitle} onChange={e => setFormData({...formData, isTitle: e.target.checked})} />
-                        <label htmlFor="isTitle" className="text-xs font-black uppercase">Display as Manifesto</label>
+                        <label htmlFor="isTitle" className="text-xs font-black uppercase text-black">Display as Manifesto</label>
                       </div>
                     </div>
 
@@ -441,16 +455,16 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="w-full px-6 py-8 border-t border-black/10 text-[9px] md:text-[10px] font-mono opacity-40 hover:opacity-100 transition-opacity flex flex-col md:flex-row justify-between items-center gap-4 text-black">
-        <div className="flex gap-6 uppercase font-bold tracking-widest">
-          <a href="https://instagram.com/gieltemolder" target="_blank" className="hover:underline">Instagram</a>
-          <a href="mailto:gielmolder@gmail.com" className="hover:underline">Contact</a>
-          <span>Exposure Therapy Archive</span>
+        <div className="flex gap-6 uppercase font-bold tracking-widest text-black">
+          <a href="https://instagram.com/gieltemolder" target="_blank" className="hover:underline text-black">Instagram</a>
+          <a href="mailto:gielmolder@gmail.com" className="hover:underline text-black">Contact</a>
+          <span className="text-black">Exposure Therapy Archive</span>
         </div>
-        <div className="flex items-center gap-6 tabular-nums">
+        <div className="flex items-center gap-6 tabular-nums text-black">
           <div>{currentTime.toLocaleTimeString('nl-NL', { hour12: false })}</div>
           <div className="bg-black text-white px-2 py-1 border border-white/20 flex items-center gap-2">
             <span className="animate-pulse w-1 h-1 bg-yellow-300 rounded-full"></span>
-            <span className="font-black uppercase">NODE_01</span>
+            <span className="font-black uppercase text-white">NODE_01</span>
           </div>
         </div>
       </footer>
