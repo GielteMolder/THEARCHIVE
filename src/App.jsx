@@ -40,9 +40,11 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [editingPostId, setEditingPostId] = useState(null);
   const [editContent, setEditContent] = useState("");
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
 
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
+  const accountMenuRef = useRef(null);
 
   const [formData, setFormData] = useState({
     type: 'blog',
@@ -67,6 +69,17 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Klik buiten account menu om te sluiten
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
+        setShowAccountMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const login = async () => {
     try { await signInWithPopup(auth, provider); } catch (error) { console.error(error); }
   };
@@ -74,6 +87,7 @@ export default function App() {
   const logout = () => {
     signOut(auth);
     setView('grid');
+    setShowAccountMenu(false);
   };
 
   // Real-time posts ophalen
@@ -298,12 +312,33 @@ export default function App() {
                   LOGIN
                 </button>
               ) : (
-                <div className={`flex items-center gap-2 md:gap-4 px-2 md:px-4 py-1 md:py-3 border-2 md:border-4 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${darkMode ? 'bg-white text-black' : 'bg-black text-white'}`}>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[7px] md:text-[10px] font-black uppercase tracking-widest leading-none">{user.displayName?.split(' ')[0] || 'Member'}</span>
-                    <button onClick={logout} className="text-[6px] md:text-[8px] font-black underline uppercase opacity-50 hover:opacity-100 transition-all">Out_</button>
-                  </div>
-                  {user.photoURL && <img src={user.photoURL} className="w-5 h-5 md:w-8 md:h-8 grayscale border border-white" alt="u" />}
+                <div className="relative" ref={accountMenuRef}>
+                  <button 
+                    onClick={() => setShowAccountMenu(!showAccountMenu)}
+                    className={`flex items-center gap-2 md:gap-4 px-2 md:px-4 py-1 md:py-3 border-2 md:border-4 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all active:shadow-none active:translate-x-0.5 active:translate-y-0.5 h-full ${darkMode ? 'bg-white text-black' : 'bg-black text-white'}`}
+                  >
+                    <span className="text-[7px] md:text-[10px] font-black uppercase tracking-widest leading-none">
+                      {user.displayName?.split(' ')[0] || 'Member'}
+                    </span>
+                    {user.photoURL && <img src={user.photoURL} className="w-5 h-5 md:w-8 md:h-8 grayscale border border-current" alt="u" />}
+                  </button>
+
+                  {/* ACCOUNT DROPDOWN MENU */}
+                  {showAccountMenu && (
+                    <div className={`absolute right-0 mt-2 w-48 md:w-64 border-4 border-black p-4 md:p-6 z-50 shadow-[6px_6px_0_0_rgba(0,0,0,1)] flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200 ${darkMode ? 'bg-[#111] text-white' : 'bg-white text-black'}`}>
+                      <div className="flex flex-col border-b-2 border-black/10 pb-3">
+                        <span className="text-[8px] font-black uppercase opacity-40 mb-1 tracking-widest">Identity_</span>
+                        <span className="text-[9px] md:text-[12px] font-bold truncate lowercase">{user.email}</span>
+                      </div>
+                      
+                      <button 
+                        onClick={logout} 
+                        className="w-full bg-red-500 text-white text-[10px] md:text-xs font-black uppercase py-2 md:py-3 border-2 md:border-black shadow-[3px_3px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-center"
+                      >
+                        Sign_Out_
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
