@@ -177,15 +177,37 @@ export default function App() {
     } catch (err) { console.error(err); }
   };
 
-  const copyToClipboard = (id) => {
-    const url = `${window.location.origin}${window.location.pathname}?id=${id}`;
-    const textField = document.createElement('textarea');
-    textField.innerText = url;
-    document.body.appendChild(textField);
-    textField.select();
-    document.execCommand('copy');
-    textField.remove();
-    alert("Link gekopieerd naar klembord!");
+  // Verbeterde Share Logica
+  const handleShare = async (post) => {
+    try {
+      if (post.type === 'blog') {
+        // Kopieer tekst voor tekst entries
+        await navigator.clipboard.writeText(post.content);
+        alert("Tekst gekopieerd naar klembord!");
+      } else if (post.type === 'art') {
+        // Kopieer afbeelding of URL voor art entries
+        try {
+          const data = await fetch(post.src);
+          const blob = await data.blob();
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob
+            })
+          ]);
+          alert("Afbeelding gekopieerd!");
+        } catch (e) {
+          // Fallback naar URL als blob kopieren niet werkt (bijv. CORS)
+          await navigator.clipboard.writeText(post.src);
+          alert("Beeld-link gekopieerd naar klembord!");
+        }
+      }
+    } catch (err) {
+      console.error("Fout bij delen:", err);
+      // Fallback voor oudere browsers
+      const url = `${window.location.origin}${window.location.pathname}?id=${post.id}`;
+      await navigator.clipboard.writeText(url);
+      alert("Link naar entry gekopieerd!");
+    }
   };
 
   const handleAddComment = async (e) => {
@@ -239,7 +261,7 @@ export default function App() {
   return (
     <div className={`min-h-screen font-mono selection:bg-pink-300 selection:text-black flex flex-col transition-colors duration-500 ${darkMode ? 'bg-black text-white' : 'bg-[#f0f0f0] text-[#1a1a1a]'}`}>
       
-      {/* HEADER: Fix voor mobiele uitlijning */}
+      {/* HEADER */}
       {view === 'grid' && (
         <header className={`p-4 md:p-10 border-b-8 border-black sticky top-0 z-40 shadow-[0_4px_0_0_rgba(0,0,0,1)] transition-colors ${darkMode ? 'bg-[#111]' : 'bg-white'}`}>
           <div className="flex flex-row justify-between items-center gap-2">
@@ -253,7 +275,6 @@ export default function App() {
             </div>
 
             <div className="flex flex-row gap-2 md:gap-4 items-center flex-shrink-0">
-              {/* DARK MODE TOGGLE */}
               <button 
                 onClick={() => setDarkMode(!darkMode)}
                 className={`p-1 md:p-3 border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all ${darkMode ? 'bg-white text-black' : 'bg-black text-white'}`}
@@ -351,7 +372,6 @@ export default function App() {
             </div>
           </div>
         ) : (
-          /* GRID FIX: Ongehinderde Masonry Layout */
           <main className="p-4 md:p-12 mb-10 block">
             <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-8 max-w-[1700px] mx-auto space-y-4 md:space-y-8">
               {filteredPosts.map((post) => (
@@ -365,20 +385,17 @@ export default function App() {
                     ${post.isTitle ? (darkMode ? 'bg-[#222] text-white italic border-l-[8px]' : 'bg-white italic border-l-[8px] md:border-l-[15px]') : post.type === 'blog' ? 'bg-yellow-300 text-black' : ''}
                   `}
                 >
-                  {/* ADMIN TOOLS */}
                   {isAdmin && (
                     <div className="absolute -top-3 -right-3 flex gap-1 z-10">
                       <button 
                         onClick={(e) => startQuickEdit(e, post)}
                         className="bg-blue-500 text-white w-7 h-7 border-2 border-black flex items-center justify-center hover:bg-black transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)]"
-                        title="Quick Edit"
                       >
                         ✎
                       </button>
                       <button 
                         onClick={(e) => handleDeletePost(e, post.id)}
                         className="bg-red-500 text-white w-7 h-7 border-2 border-black flex items-center justify-center hover:bg-black transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)]"
-                        title="Delete"
                       >
                         ✕
                       </button>
@@ -406,11 +423,12 @@ export default function App() {
                       )}
                       
                       <div className="flex justify-between items-end pt-2">
+                        {/* PINK LIKE BUTTON */}
                         <button 
                           onClick={(e) => handleLike(e, post.id)}
-                          className={`flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black px-1 transition-all ${post.likedBy?.includes(user?.uid) ? 'bg-black text-white shadow-none' : 'bg-white hover:bg-gray-100 shadow-[2px_2px_0_0_rgba(0,0,0,1)]'}`}
+                          className={`flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black px-1 transition-all ${post.likedBy?.includes(user?.uid) ? 'bg-pink-300 text-black shadow-none' : 'bg-pink-200 hover:bg-pink-300 text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]'}`}
                         >
-                          <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-white' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                          <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-red-600' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                           {post.likes || 0}
                         </button>
                         <div className="text-[7px] md:text-[10px] font-black opacity-40 text-right uppercase italic underline underline-offset-4 font-mono">{post.date}</div>
@@ -424,11 +442,12 @@ export default function App() {
                       <div className="absolute top-2 left-2 bg-white text-black border-2 border-black px-2 py-0.5 text-[7px] md:text-[10px] font-black uppercase italic shadow-[3px_3px_0_0_rgba(0,0,0,1)] font-mono">
                         {post.title}
                       </div>
+                      {/* PINK LIKE BUTTON */}
                       <button 
                         onClick={(e) => handleLike(e, post.id)}
-                        className={`absolute bottom-2 right-2 border-2 border-black px-1 flex items-center gap-1 text-[8px] font-black transition-all ${post.likedBy?.includes(user?.uid) ? 'bg-black text-white shadow-none' : 'bg-white text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]'}`}
+                        className={`absolute bottom-2 right-2 border-2 border-black px-1 flex items-center gap-1 text-[8px] font-black transition-all ${post.likedBy?.includes(user?.uid) ? 'bg-pink-300 text-black shadow-none' : 'bg-pink-200 text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]'}`}
                       >
-                        <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-white' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                        <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-red-600' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                         {post.likes || 0}
                       </button>
                     </div>
@@ -460,7 +479,7 @@ export default function App() {
         </footer>
       )}
 
-      {/* MODAL: SHARE-KNOP IS NU PINK */}
+      {/* MODAL */}
       {selectedPost && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-2 md:p-12 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setSelectedPost(null)}>
           <div className={`w-full max-w-3xl max-h-[90vh] overflow-y-auto border-4 md:border-[8px] border-black p-5 md:p-10 relative shadow-[10px_10px_0_0_rgba(0,0,0,1)] font-mono ${darkMode ? 'bg-[#111] text-white' : 'bg-white text-black'}`} onClick={e => e.stopPropagation()}>
@@ -469,18 +488,19 @@ export default function App() {
                 {selectedPost.title || (selectedPost.isTitle ? 'Manifesto' : 'Entry')}
               </h2>
               <div className="flex flex-wrap gap-2">
-                {/* PINK SHARE BUTTON */}
+                {/* SKY BLUE SHARE BUTTON */}
                 <button 
-                  onClick={() => copyToClipboard(selectedPost.id)} 
-                  className="bg-pink-200 text-black px-3 py-2 font-black text-xs border-2 border-black hover:bg-pink-300 transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)]"
+                  onClick={() => handleShare(selectedPost)} 
+                  className="bg-sky-300 text-black px-3 py-2 font-black text-xs border-2 border-black hover:bg-sky-400 transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)]"
                 >
                   SHARE
                 </button>
+                {/* PINK LIKE BUTTON */}
                 <button 
                   onClick={() => handleLike(null, selectedPost.id)}
-                  className={`px-4 py-2 border-2 md:border-4 border-black font-black flex items-center gap-2 transition-all ${selectedPost.likedBy?.includes(user?.uid) ? 'bg-black text-white shadow-none' : 'bg-white text-black hover:bg-gray-100 shadow-[4px_4px_0_0_rgba(0,0,0,1)]'}`}
+                  className={`px-4 py-2 border-2 md:border-4 border-black font-black flex items-center gap-2 transition-all ${selectedPost.likedBy?.includes(user?.uid) ? 'bg-pink-300 text-black shadow-none' : 'bg-pink-200 text-black hover:bg-pink-300 shadow-[4px_4px_0_0_rgba(0,0,0,1)]'}`}
                 >
-                  <svg className={`w-4 h-4 ${selectedPost.likedBy?.includes(user?.uid) ? 'text-white' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                  <svg className={`w-4 h-4 ${selectedPost.likedBy?.includes(user?.uid) ? 'text-red-600' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                   {selectedPost.likes || 0}
                 </button>
                 <button onClick={() => setSelectedPost(null)} className="bg-black text-white px-5 py-2 md:px-8 md:py-3 font-black text-xs border-2 md:border-4 border-black hover:bg-yellow-300 hover:text-black transition-colors font-mono uppercase">Exit_</button>
@@ -527,7 +547,7 @@ export default function App() {
                     <button type="submit" className="bg-black text-white py-3 md:py-4 font-black uppercase text-xs md:text-lg hover:bg-yellow-300 hover:text-black transition-all shadow-[6px_6px_0_0_rgba(0,0,0,1)]">SEND_ENTRY</button>
                   </form>
                 ) : (
-                  <button onClick={login} className="w-full border-4 border-dashed border-black p-4 md:p-8 text-[10px] md:text-lg font-black uppercase hover:bg-yellow-300 hover:text-black transition-colors">LOGIN_OM_TE_REAGEREN_</button>
+                  <button onClick={login} className="w-full border-4 border-dashed border-black p-4 md:p-8 text-[10px] md:text-lg font-black uppercase hover:bg-yellow-300 hover:text-black transition-colors font-mono">LOGIN_OM_TE_REAGEREN_</button>
                 )}
               </div>
             </div>
