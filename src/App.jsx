@@ -455,14 +455,14 @@ export default function App() {
         )}
       </div>
 
-      {/* FOOTER */}
-      <footer className="w-full px-6 py-8 border-t border-black/10 text-[9px] md:text-[10px] font-mono opacity-40 hover:opacity-100 transition-opacity flex flex-col md:flex-row justify-between items-center gap-4 text-black uppercase">
-        <div className="flex gap-6 font-bold tracking-widest text-black">
+      {/* FOOTER - FIXED VISIBILITY IN DARK MODE */}
+      <footer className={`w-full px-6 py-8 border-t border-black/10 text-[9px] md:text-[10px] font-mono opacity-40 hover:opacity-100 transition-opacity flex flex-col md:flex-row justify-between items-center gap-4 uppercase ${darkMode ? 'text-white' : 'text-black'}`}>
+        <div className={`flex gap-6 font-bold tracking-widest ${darkMode ? 'text-white' : 'text-black'}`}>
           <a href="https://instagram.com/gieltemolder" target="_blank" className="hover:underline">Instagram</a>
           <a href="mailto:gielmolder@gmail.com" className="hover:underline">Contact</a>
           <span>Exposure Therapy Archive</span>
         </div>
-        <div className="flex items-center gap-6 tabular-nums text-black">
+        <div className={`flex items-center gap-6 tabular-nums ${darkMode ? 'text-white' : 'text-black'}`}>
           <div>{currentTime.toLocaleTimeString('nl-NL', { hour12: false })}</div>
           <div className="bg-black text-white px-2 py-1 border border-white/20 flex items-center gap-2">
             <span className="animate-pulse w-1 h-1 bg-yellow-300 rounded-full"></span>
