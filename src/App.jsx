@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, 
-  doc, updateDoc, deleteDoc, increment 
+  doc, updateDoc, deleteDoc, increment, arrayUnion 
 } from "firebase/firestore";
 import { 
   getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
@@ -33,9 +33,10 @@ export default function App() {
   const [newComment, setNewComment] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // NIEUWE STATE VOOR FUNCTIONALITEIT
-  const [activeFilter, setActiveFilter] = useState('all'); // all, blog, art
+  // STATE VOOR FILTERS & ZOEKEN
+  const [activeFilter, setActiveFilter] = useState('all'); 
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false); // Menu staat standaard dicht
 
   const [formData, setFormData] = useState({
     type: 'blog',
@@ -63,7 +64,10 @@ export default function App() {
     try { await signInWithPopup(auth, provider); } catch (error) { console.error(error); }
   };
 
-  const logout = () => signOut(auth);
+  const logout = () => {
+    signOut(auth);
+    setView('grid');
+  };
 
   // Real-time posts ophalen
   useEffect(() => { 
@@ -76,7 +80,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Filteren en Zoeken (in-memory voor snelheid)
+  // Filteren en Zoeken
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
       const matchesFilter = activeFilter === 'all' || post.type === activeFilter;
@@ -107,7 +111,8 @@ export default function App() {
         ...formData, 
         timestamp: serverTimestamp(),
         authorEmail: user.email,
-        likes: 0
+        likes: 0,
+        likedBy: [] 
       });
       setFormData({ type: 'blog', content: '', title: '', src: '', isTitle: false, sourceInfo: '', date: new Date().toLocaleDateString('nl-NL') });
       setView('grid');
@@ -121,10 +126,31 @@ export default function App() {
   };
 
   const handleLike = async (e, id) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
+    if (!user) {
+      alert("Inloggen vereist om te reageren of te waarderen.");
+      return;
+    }
+    
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    
+    if (post.likedBy && post.likedBy.includes(user.uid)) return;
+
     try {
       const postRef = doc(db, "posts", id);
-      await updateDoc(postRef, { likes: increment(1) });
+      await updateDoc(postRef, { 
+        likes: increment(1),
+        likedBy: arrayUnion(user.uid)
+      });
+      
+      if (selectedPost && selectedPost.id === id) {
+        setSelectedPost({
+          ...selectedPost,
+          likes: (selectedPost.likes || 0) + 1,
+          likedBy: [...(selectedPost.likedBy || []), user.uid]
+        });
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -159,6 +185,16 @@ export default function App() {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
       }
+      .filters-container {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+        opacity: 0;
+      }
+      .filters-active {
+        max-height: 300px;
+        opacity: 1;
+      }
     `;
     document.head.appendChild(style);
   }, []);
@@ -168,71 +204,79 @@ export default function App() {
   return (
     <div className="min-h-screen text-[#1a1a1a] font-mono selection:bg-black selection:text-white flex flex-col">
       
-      {/* HEADER */}
+      {/* HEADER: Zichtbaar in grid view */}
       {view === 'grid' && (
-        <header className="p-4 md:p-10 border-b-8 border-black flex flex-col md:flex-row justify-between items-start md:items-center bg-white sticky top-0 z-40 shadow-[0_4px_0_0_rgba(0,0,0,1)] gap-6">
-          <div className="group cursor-default pr-4">
-            <h1 className="text-3xl md:text-6xl font-bold font-mono uppercase tracking-tighter italic leading-none break-words max-w-[200px] md:max-w-none">
-              The Archive
-            </h1>
-            <p className="text-[8px] md:text-xs font-bold font-mono bg-black text-white px-2 py-1 mt-2 inline-block uppercase tracking-widest">
-              Exposure Therapy // Giel te Molder
-            </p>
+        <header className="p-4 md:p-10 border-b-8 border-black bg-white sticky top-0 z-40 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div 
+              className="group cursor-pointer pr-4 select-none"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              {/* Pijl verwijderd op verzoek van Giel */}
+              <h1 className="text-3xl md:text-6xl font-bold font-mono uppercase tracking-tighter italic leading-none break-words max-w-[200px] md:max-w-none transition-transform active:scale-95">
+                The Archive
+              </h1>
+              <p className="text-[8px] md:text-xs font-bold font-mono bg-black text-white px-2 py-1 mt-2 inline-block uppercase tracking-widest">
+                Exposure Therapy // Giel te Molder
+              </p>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-end md:items-center self-end md:self-auto">
+              {isAdmin && (
+                <button 
+                  onClick={() => setView('admin')}
+                  className="bg-yellow-300 border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                >
+                  + ADD_ENTRY
+                </button>
+              )}
+              {!user ? (
+                <button onClick={login} className="border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:bg-yellow-300 transition-colors">LOGIN_</button>
+              ) : (
+                <div className="flex items-center gap-2 md:gap-4 bg-black text-white p-1 md:p-2 pr-3 md:pr-6 border-2 md:border-4 border-black shadow-[4px_4px_0_0_rgba(0,0,0,0.2)]">
+                  {user.photoURL && <img src={user.photoURL} className="w-6 h-6 md:w-10 md:h-10 grayscale border border-white" alt="u" />}
+                  <button onClick={logout} className="text-[8px] md:text-[10px] font-black underline uppercase hover:text-yellow-300">Out_</button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* FILTERS & SEARCH */}
-          <div className="flex flex-col gap-4 w-full md:w-auto">
-            <div className="flex border-4 border-black bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
-              <input 
-                type="text" 
-                placeholder="SEARCH_ARCHIVE..." 
-                className="bg-transparent p-2 text-xs font-bold outline-none flex-grow md:w-64 uppercase"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <div className="bg-black text-white p-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          {/* HIDDEN FOLD-OUT FILTERS & SEARCH */}
+          <div className={`filters-container ${showFilters ? 'filters-active mt-8' : ''}`}>
+            <div className="flex flex-col gap-6 p-1 border-t-4 border-black pt-6 animate-in fade-in duration-500">
+              <div className="flex border-4 border-black bg-white shadow-[6px_6px_0_0_rgba(0,0,0,1)] max-w-xl">
+                <input 
+                  type="text" 
+                  placeholder="SEARCH_ARCHIVE..." 
+                  className="bg-transparent p-3 text-sm font-bold outline-none flex-grow uppercase font-mono"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <div className="bg-black text-white p-3 flex items-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-4 text-[12px] font-black uppercase">
+                {['all', 'blog', 'art'].map(f => (
+                  <button 
+                    key={f}
+                    onClick={() => setActiveFilter(f)}
+                    className={`border-2 md:border-4 border-black px-4 py-2 transition-all shadow-[4px_4px_0_0_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 ${activeFilter === f ? 'bg-black text-white' : 'bg-white hover:bg-yellow-300'}`}
+                  >
+                    {f === 'all' ? 'Everything' : f === 'blog' ? 'Text' : 'Visual'}
+                  </button>
+                ))}
               </div>
             </div>
-            
-            <div className="flex gap-2 text-[10px] font-black uppercase">
-              {['all', 'blog', 'art'].map(f => (
-                <button 
-                  key={f}
-                  onClick={() => setActiveFilter(f)}
-                  className={`border-2 border-black px-3 py-1 transition-colors ${activeFilter === f ? 'bg-black text-white' : 'bg-white hover:bg-yellow-300'}`}
-                >
-                  {f === 'all' ? 'Everything' : f === 'blog' ? 'Text' : 'Visual'}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-end md:items-center self-end md:self-auto">
-            {isAdmin && (
-              <button 
-                onClick={() => setView('admin')}
-                className="bg-yellow-300 border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-              >
-                + ADD_ENTRY
-              </button>
-            )}
-            {!user ? (
-              <button onClick={login} className="border-2 md:border-4 border-black px-3 md:px-6 py-1 md:py-3 text-[10px] md:text-xs font-black uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:bg-yellow-300 transition-colors">LOGIN_</button>
-            ) : (
-              <div className="flex items-center gap-2 md:gap-4 bg-black text-white p-1 md:p-2 pr-3 md:pr-6 border-2 md:border-4 border-black shadow-[4px_4px_0_0_rgba(0,0,0,0.2)]">
-                {user.photoURL && <img src={user.photoURL} className="w-6 h-6 md:w-10 md:h-10 grayscale border border-white" alt="u" />}
-                <button onClick={logout} className="text-[8px] md:text-[10px] font-black underline uppercase hover:text-yellow-300">Out_</button>
-              </div>
-            )}
           </div>
         </header>
       )}
 
-      {/* MAIN CONTENT */}
-      <div className="flex-grow">
-        {view === 'admin' && (
-          <div className="min-h-[80vh] bg-[#f0f0f0] flex flex-col p-4 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-500">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-grow flex flex-col">
+        {view === 'admin' ? (
+          <div className="flex-grow bg-[#f0f0f0] flex flex-col p-4 md:p-20 items-center justify-center animate-in fade-in slide-in-from-bottom duration-500">
             <div className="max-w-3xl mx-auto w-full space-y-8 bg-white border-4 md:border-[10px] border-black p-6 md:p-10 shadow-[10px_10px_0_0_rgba(0,0,0,1)] md:shadow-[25px_25px_0_0_rgba(0,0,0,1)]">
               <div className="flex justify-between items-center border-b-4 border-black pb-4">
                 <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase underline decoration-yellow-300 underline-offset-4 font-mono">Input_Terminal</h2>
@@ -262,10 +306,8 @@ export default function App() {
               </form>
             </div>
           </div>
-        )}
-
-        {view === 'grid' && (
-          <main className="p-4 md:p-12 mb-10">
+        ) : (
+          <main className="p-4 md:p-12 mb-10 flex-grow">
             <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-8 max-w-[1700px] mx-auto space-y-4 md:space-y-8">
               {filteredPosts.map((post) => (
                 <div 
@@ -296,9 +338,9 @@ export default function App() {
                       <div className="flex justify-between items-end">
                         <button 
                           onClick={(e) => handleLike(e, post.id)}
-                          className="flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black/20 px-1 hover:bg-white transition-colors"
+                          className={`flex items-center gap-1 text-[8px] md:text-[10px] font-black border border-black/20 px-1 transition-colors ${post.likedBy?.includes(user?.uid) ? 'bg-black text-white' : 'hover:bg-white'}`}
                         >
-                          <svg className="w-2 h-2 text-red-500 fill-current" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                          <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-white' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                           {post.likes || 0}
                         </button>
                         <div className="text-[7px] md:text-[10px] font-black opacity-40 text-right uppercase italic underline underline-offset-4 font-mono">{post.date}</div>
@@ -314,9 +356,9 @@ export default function App() {
                       </div>
                       <button 
                         onClick={(e) => handleLike(e, post.id)}
-                        className="absolute bottom-2 right-2 bg-white border-2 border-black px-1 flex items-center gap-1 text-[8px] font-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]"
+                        className={`absolute bottom-2 right-2 border-2 border-black px-1 flex items-center gap-1 text-[8px] font-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-colors ${post.likedBy?.includes(user?.uid) ? 'bg-black text-white' : 'bg-white text-black'}`}
                       >
-                        <svg className="w-2 h-2 text-red-500 fill-current" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                        <svg className={`w-2 h-2 ${post.likedBy?.includes(user?.uid) ? 'text-white' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                         {post.likes || 0}
                       </button>
                     </div>
@@ -359,9 +401,9 @@ export default function App() {
               <div className="flex gap-2">
                 <button 
                   onClick={() => handleLike(null, selectedPost.id)}
-                  className="bg-white text-black px-4 py-2 border-2 md:border-4 border-black font-black hover:bg-red-50 flex items-center gap-2"
+                  className={`px-4 py-2 border-2 md:border-4 border-black font-black flex items-center gap-2 transition-colors ${selectedPost.likedBy?.includes(user?.uid) ? 'bg-black text-white' : 'bg-white text-black hover:bg-red-50'}`}
                 >
-                  <svg className="w-4 h-4 text-red-500 fill-current" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
+                  <svg className={`w-4 h-4 ${selectedPost.likedBy?.includes(user?.uid) ? 'text-white' : 'text-red-500'} fill-current`} viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/></svg>
                   {selectedPost.likes || 0}
                 </button>
                 <button onClick={() => setSelectedPost(null)} className="bg-black text-white px-5 py-2 md:px-8 md:py-3 font-black text-xs border-2 md:border-4 border-black hover:bg-yellow-300 hover:text-black transition-colors font-mono">EXIT_</button>
